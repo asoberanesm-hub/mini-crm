@@ -3,10 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Aysa</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <title>Aysa CRM</title>
+    <style>
+      #fallback { padding: 2rem; font-family: sans-serif; text-align: center; background: #f0f9ff; color: #0369a1; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+      #fallback p { font-size: 1.25rem; }
+    </style>
   </head>
   <body>
-    <div id="root"><p style="padding:2rem;font-family:sans-serif;text-align:center;color:#666;">Cargando Aysa CRM…</p></div>
+    <div id="fallback"><p>Cargando Aysa CRM…</p></div>
+    <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

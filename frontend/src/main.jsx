@@ -44,42 +44,70 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-// Mostrar errores no capturados en pantalla
-window.addEventListener('error', (e) => {
+function hideFallback() {
+  const el = document.getElementById('fallback')
+  if (el) el.style.display = 'none'
+}
+
+function showErrorInRoot(message) {
   const root = document.getElementById('root')
-  if (root && !root.querySelector('[data-error-overlay]')) {
-    const div = document.createElement('div')
-    div.setAttribute('data-error-overlay', '1')
-    div.style.cssText = 'padding:2rem;font-family:sans-serif;max-width:500px;margin:2rem auto;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;'
-    div.innerHTML = '<h2 style="color:#b91c1c;">Error al cargar</h2><pre style="white-space:pre-wrap;font-size:12px;color:#555;">' + (e.message || e) + '</pre><button onclick="location.reload()">Recargar</button>'
-    root.innerHTML = ''
-    root.appendChild(div)
+  if (!root) return
+  hideFallback()
+  root.innerHTML = '<div data-error-overlay="1" style="padding:2rem;font-family:sans-serif;max-width:500px;margin:2rem auto;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;"><h2 style="color:#b91c1c;">Error al cargar</h2><pre style="white-space:pre-wrap;font-size:12px;color:#555;">' + String(message).replace(/</g, '&lt;') + '</pre><a href="/" style="display:inline-block;margin-top:1rem;padding:0.5rem 1rem;background:#0369a1;color:#fff;text-decoration:none;border-radius:6px;">Recargar</a></div>'
+}
+
+window.addEventListener('error', (e) => {
+  if (!document.getElementById('root')?.querySelector('[data-error-overlay]')) {
+    showErrorInRoot(e.message || e)
+  }
+})
+window.addEventListener('unhandledrejection', (e) => {
+  if (!document.getElementById('root')?.querySelector('[data-error-overlay]')) {
+    showErrorInRoot(e.reason?.message || String(e.reason))
   }
 })
 
 const root = document.getElementById('root')
 if (!root) {
   console.error('No #root')
-} else if (!clerkPublishableKey || !apiUrl) {
-  const missing = []
-  if (!clerkPublishableKey) missing.push('VITE_CLERK_PUBLISHABLE_KEY')
-  if (!apiUrl) missing.push('VITE_API_URL')
-  root.innerHTML = ''
-  ReactDOM.createRoot(root).render(
-    <ConfigError message={`Faltan variables de entorno en el build: ${missing.join(', ')}.`} />
-  )
 } else {
-  ReactDOM.createRoot(root).render(
-    <React.StrictMode>
-      <ErrorBoundary>
-        <BrowserRouter>
-          <ClerkProvider publishableKey={clerkPublishableKey} telemetry={false}>
-            <QueryClientProvider client={queryClient}>
-              <App />
-            </QueryClientProvider>
-          </ClerkProvider>
-        </BrowserRouter>
-      </ErrorBoundary>
-    </React.StrictMode>
-  )
+  const useSimple = typeof window !== 'undefined' && window.location.search.includes('simple=1')
+  if (useSimple) {
+    hideFallback()
+    ReactDOM.createRoot(root).render(
+      <div style={{ padding: '2rem', fontFamily: 'sans-serif', textAlign: 'center' }}>
+        <h1>Aysa CRM</h1>
+        <p style={{ color: '#555' }}>La app está desplegada correctamente.</p>
+        <p style={{ fontSize: '0.875rem', color: '#666' }}>Quita <code>?simple=1</code> de la URL para usar el login con Clerk.</p>
+        <a href="/" style={{ display: 'inline-block', marginTop: '1rem', padding: '0.5rem 1rem', background: '#0369a1', color: '#fff', textDecoration: 'none', borderRadius: 6 }}>Ir al CRM</a>
+      </div>
+    )
+  } else if (!clerkPublishableKey || !apiUrl) {
+    const missing = []
+    if (!clerkPublishableKey) missing.push('VITE_CLERK_PUBLISHABLE_KEY')
+    if (!apiUrl) missing.push('VITE_API_URL')
+    hideFallback()
+    ReactDOM.createRoot(root).render(
+      <ConfigError message={`Faltan variables de entorno en el build: ${missing.join(', ')}.`} />
+    )
+  } else {
+    try {
+      hideFallback()
+      ReactDOM.createRoot(root).render(
+        <React.StrictMode>
+          <ErrorBoundary>
+            <BrowserRouter>
+              <ClerkProvider publishableKey={clerkPublishableKey} telemetry={false}>
+                <QueryClientProvider client={queryClient}>
+                  <App />
+                </QueryClientProvider>
+              </ClerkProvider>
+            </BrowserRouter>
+          </ErrorBoundary>
+        </React.StrictMode>
+      )
+    } catch (e) {
+      showErrorInRoot(e?.message || String(e))
+    }
+  }
 }
