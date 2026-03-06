@@ -25,6 +25,10 @@ export async function fetchApi(path, opts = {}) {
     const msg = e?.message || ''
     const isNetwork = e.name === 'TypeError' && (msg.includes('fetch') || msg.includes('Load failed') || msg.includes('Failed to fetch'))
     if (isNetwork) {
+      const isProd = typeof window !== 'undefined' && !/localhost|127\.0\.0\.1/.test(window.location.hostname)
+      if (isProd) {
+        throw new Error('No se pudo conectar con el backend. Si acabas de abrir la app, el servidor puede estar iniciando en Render (espera 1 minuto y recarga). Si sigue fallando, revisa que el backend en Render esté en estado "Live".')
+      }
       throw new Error('No se pudo conectar con el servidor. ¿Está corriendo el backend? En la carpeta backend ejecuta: npm run dev')
     }
     throw e

@@ -32,16 +32,18 @@ const allowedOrigins = [
   'http://127.0.0.1:5174',
   'http://127.0.0.1:5175',
   'http://127.0.0.1:5176',
+  'https://mini-crm-frontend-yzpu.onrender.com',
 ]
-if (process.env.FRONTEND_URL && !allowedOrigins.includes(process.env.FRONTEND_URL)) {
-  allowedOrigins.push(process.env.FRONTEND_URL)
+if (process.env.FRONTEND_URL) {
+  const url = process.env.FRONTEND_URL.replace(/\/$/, '')
+  if (url && !allowedOrigins.includes(url)) allowedOrigins.push(url)
 }
 app.use(cors({
   origin(origin, cb) {
     if (!origin) return cb(null, true)
     if (allowedOrigins.includes(origin)) return cb(null, true)
-    // En desarrollo permitir cualquier puerto de localhost (p. ej. Vite 5177, 5178…)
     if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return cb(null, true)
+    if (/\.onrender\.com$/.test(new URL(origin).hostname)) return cb(null, true)
     return cb(null, false)
   },
 }))
