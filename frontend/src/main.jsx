@@ -44,6 +44,19 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+// Mostrar errores no capturados en pantalla
+window.addEventListener('error', (e) => {
+  const root = document.getElementById('root')
+  if (root && !root.querySelector('[data-error-overlay]')) {
+    const div = document.createElement('div')
+    div.setAttribute('data-error-overlay', '1')
+    div.style.cssText = 'padding:2rem;font-family:sans-serif;max-width:500px;margin:2rem auto;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;'
+    div.innerHTML = '<h2 style="color:#b91c1c;">Error al cargar</h2><pre style="white-space:pre-wrap;font-size:12px;color:#555;">' + (e.message || e) + '</pre><button onclick="location.reload()">Recargar</button>'
+    root.innerHTML = ''
+    root.appendChild(div)
+  }
+})
+
 const root = document.getElementById('root')
 if (!root) {
   console.error('No #root')
