@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { SignedIn, SignedOut, SignIn, SignUp } from '@clerk/clerk-react'
+// STAND-BY CLERK: imports desactivados. Para reactivar: descomentar y volver a usar SignedIn/SignedOut en las rutas.
+// import { SignedIn, SignedOut, SignIn, SignUp } from '@clerk/clerk-react'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import ClientesActivos from './pages/ana/ClientesActivos'
@@ -17,36 +18,12 @@ export default function App() {
       </header>
       <main style={{ flex: 1 }}>
     <Routes>
-      {/* Rutas públicas para login/registro de Clerk */}
-      <Route
-        path="/sign-in/*"
-        element={
-          <SignedOut>
-            <div style={{ padding: '1.5rem', maxWidth: 400, margin: '0 auto' }}>
-              <h2 style={{ fontFamily: 'sans-serif', fontSize: '1.25rem', color: '#334155', marginBottom: '1rem' }}>Iniciar sesión</h2>
-              <SignIn routing="path" path="/sign-in" />
-            </div>
-          </SignedOut>
-        }
-      />
-      <Route
-        path="/sign-up/*"
-        element={
-          <SignedOut>
-            <SignUp routing="path" path="/sign-up" />
-          </SignedOut>
-        }
-      />
+      {/* STAND-BY CLERK: /sign-in y /sign-up redirigen al dashboard. Para reactivar: restaurar rutas con SignIn/SignUp y SignedOut. */}
+      <Route path="/sign-in/*" element={<Navigate to="/" replace />} />
+      <Route path="/sign-up/*" element={<Navigate to="/" replace />} />
 
-      {/* Rutas protegidas: solo usuarios autenticados */}
-      <Route
-        path="/*"
-        element={
-          <SignedIn>
-            <Layout />
-          </SignedIn>
-        }
-      >
+      {/* CRM: acceso directo sin login (Clerk en stand-by). Para reactivar: envolver element en <SignedIn><Layout /></SignedIn> y añadir ruta * con <SignedOut><Navigate to="/sign-in" /></SignedOut>. */}
+      <Route path="/*" element={<Layout />}>
         <Route index element={<Dashboard />} />
         <Route path="ana/clientes-activos" element={<ClientesActivos />} />
         <Route path="ana/prospeccion" element={<ProspeccionAna />} />
@@ -56,23 +33,7 @@ export default function App() {
         <Route path="agenda" element={<Agenda />} />
       </Route>
 
-      {/* Cualquier ruta desconocida redirige al dashboard (si logueado) o al login */}
-      <Route
-        path="*"
-        element={
-          <SignedIn>
-            <Navigate to="/" />
-          </SignedIn>
-        }
-      />
-      <Route
-        path="*"
-        element={
-          <SignedOut>
-            <Navigate to="/sign-in" />
-          </SignedOut>
-        }
-      />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
       </main>
     </div>
