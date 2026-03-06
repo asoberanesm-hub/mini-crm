@@ -11,6 +11,11 @@ import Agenda from './pages/Agenda'
 
 export default function App() {
   return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <header style={{ padding: '0.75rem 1rem', background: '#0369a1', color: '#fff', fontFamily: 'sans-serif', fontSize: '1rem', fontWeight: 600 }}>
+        Aysa CRM
+      </header>
+      <main style={{ flex: 1 }}>
     <Routes>
       {/* Rutas públicas para login/registro de Clerk */}
       <Route
@@ -66,5 +71,7 @@ export default function App() {
         }
       />
     </Routes>
+      </main>
+    </div>
   )
 }
