@@ -22,7 +22,10 @@ export default function App() {
         path="/sign-in/*"
         element={
           <SignedOut>
-            <SignIn routing="path" path="/sign-in" />
+            <div style={{ padding: '1.5rem', maxWidth: 400, margin: '0 auto' }}>
+              <h2 style={{ fontFamily: 'sans-serif', fontSize: '1.25rem', color: '#334155', marginBottom: '1rem' }}>Iniciar sesión</h2>
+              <SignIn routing="path" path="/sign-in" />
+            </div>
           </SignedOut>
         }
       />

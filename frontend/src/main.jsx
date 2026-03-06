@@ -97,7 +97,14 @@ if (!root) {
         <React.StrictMode>
           <ErrorBoundary>
             <BrowserRouter>
-              <ClerkProvider publishableKey={clerkPublishableKey} telemetry={false}>
+              <ClerkProvider
+                publishableKey={clerkPublishableKey}
+                telemetry={false}
+                signInUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/sign-in`}
+                signUpUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/sign-up`}
+                afterSignInUrl={typeof window !== 'undefined' ? window.location.origin + '/' : '/'}
+                afterSignUpUrl={typeof window !== 'undefined' ? window.location.origin + '/' : '/'}
+              >
                 <QueryClientProvider client={queryClient}>
                   <App />
                 </QueryClientProvider>
