@@ -1,5 +1,6 @@
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import { useState, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar'
 import { format, parse, startOfWeek, getDay, addHours, subMonths, addMonths } from 'date-fns'
@@ -37,6 +38,13 @@ function formatDateShort(d) {
 
 function formatTime(d) {
   return d ? format(new Date(d), 'HH:mm', { locale: es }) : '-'
+}
+
+/** Clases del badge por tipo (mismo color que la leyenda). */
+function eventTypeBadgeClass(e) {
+  if (e.isProspectFollowUp) return 'bg-amber-100 text-amber-800 border border-amber-200'
+  if (e.eventType === 'MONEX') return 'bg-sky-100 text-sky-800 border border-sky-200'
+  return 'bg-teal-100 text-teal-800 border border-teal-200'
 }
 
 export default function Agenda() {
@@ -205,30 +213,49 @@ export default function Agenda() {
                     vencidos.map((e) => (
                       <div
                         key={e.id}
-                        className="p-2.5 rounded-lg bg-red-50 border border-red-100 text-slate-800 text-sm flex items-start justify-between gap-2"
+                        className={`p-2.5 rounded-lg bg-red-50 border border-red-100 text-slate-800 text-sm flex items-start justify-between gap-2 ${!e.isProspectFollowUp ? 'cursor-pointer hover:bg-red-100' : ''}`}
+                        onClick={!e.isProspectFollowUp ? () => handleSelectEvent({ ...e, start: new Date(e.dateTime), end: addHours(new Date(e.dateTime), 1) }) : undefined}
                       >
                         <div className="min-w-0 flex-1">
                           <div className="font-medium text-red-800">{e.title}</div>
                           <div className="text-xs text-slate-500 mt-0.5">
                             {formatDateShort(e.dateTime)} · {formatTime(e.dateTime)}
                           </div>
-                          <span className="text-xs font-semibold text-slate-500 mt-1 inline-block">
+                          <span className={`text-xs font-semibold mt-1 inline-block px-1.5 py-0.5 rounded border ${eventTypeBadgeClass(e)}`}>
                             {e.isProspectFollowUp ? 'PROSP' : (e.eventType === 'MONEX' ? 'MONEX' : 'ANA')}
                           </span>
                         </div>
-                        {e.isProspectFollowUp ? (
-                          <span className="text-slate-400 text-xs shrink-0" title="Quitar fecha en Prospección">—</span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={(ev) => { ev.stopPropagation(); if (window.confirm(`¿Eliminar "${e.title}"?`)) eliminar.mutate(e.id); }}
-                            disabled={eliminar.isPending && eliminar.variables === e.id}
-                            className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-red-600 hover:bg-red-100 disabled:opacity-50"
-                            title="Eliminar"
-                          >
-                            ✕
-                          </button>
-                        )}
+                        <div className="shrink-0 flex items-center gap-0.5">
+                          {e.isProspectFollowUp ? (
+                            <Link
+                              to="/ana/prospeccion"
+                              className="px-2 py-1 text-xs font-medium text-sky-600 hover:text-sky-700 hover:underline"
+                              onClick={(ev) => ev.stopPropagation()}
+                            >
+                              Editar
+                            </Link>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={(ev) => { ev.stopPropagation(); handleSelectEvent({ ...e, start: new Date(e.dateTime), end: addHours(new Date(e.dateTime), 1) }); }}
+                                className="px-2 py-1 text-xs font-medium text-sky-600 hover:underline"
+                                title="Editar evento"
+                              >
+                                Editar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(ev) => { ev.stopPropagation(); if (window.confirm(`¿Eliminar "${e.title}"?`)) eliminar.mutate(e.id); }}
+                                disabled={eliminar.isPending && eliminar.variables === e.id}
+                                className="w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-red-600 hover:bg-red-100 disabled:opacity-50"
+                                title="Eliminar"
+                              >
+                                ✕
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </div>
                     ))
                   )}
@@ -252,23 +279,40 @@ export default function Agenda() {
                           <div className="text-xs text-slate-500 mt-0.5">
                             {formatDateShort(e.dateTime)} · {formatTime(e.dateTime)}
                           </div>
-                          <span className="text-xs font-semibold text-slate-500 mt-1 inline-block">
+                          <span className={`text-xs font-semibold mt-1 inline-block px-1.5 py-0.5 rounded border ${eventTypeBadgeClass(e)}`}>
                             {e.isProspectFollowUp ? 'PROSP' : (e.eventType === 'MONEX' ? 'MONEX' : 'ANA')}
                           </span>
                         </div>
-                        {e.isProspectFollowUp ? (
-                          <span className="text-slate-400 text-xs shrink-0" title="Quitar fecha en Prospección">—</span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={(ev) => { ev.stopPropagation(); if (window.confirm(`¿Eliminar "${e.title}"?`)) eliminar.mutate(e.id); }}
-                            disabled={eliminar.isPending && eliminar.variables === e.id}
-                            className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-red-600 hover:bg-red-100 disabled:opacity-50"
-                            title="Eliminar"
-                          >
-                            ✕
-                          </button>
-                        )}
+                        <div className="shrink-0 flex items-center gap-0.5" onClick={(ev) => ev.stopPropagation()}>
+                          {e.isProspectFollowUp ? (
+                            <Link
+                              to="/ana/prospeccion"
+                              className="px-2 py-1 text-xs font-medium text-sky-600 hover:text-sky-700 hover:underline"
+                            >
+                              Editar
+                            </Link>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleSelectEvent({ ...e, start: new Date(e.dateTime), end: addHours(new Date(e.dateTime), 1) })}
+                                className="px-2 py-1 text-xs font-medium text-sky-600 hover:underline"
+                                title="Editar evento"
+                              >
+                                Editar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { if (window.confirm(`¿Eliminar "${e.title}"?`)) eliminar.mutate(e.id); }}
+                                disabled={eliminar.isPending && eliminar.variables === e.id}
+                                className="w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-red-600 hover:bg-red-100 disabled:opacity-50"
+                                title="Eliminar"
+                              >
+                                ✕
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </div>
                     ))
                   )}
@@ -505,7 +549,7 @@ export default function Agenda() {
                       <div className="text-xs text-slate-500 mt-0.5">{formatDateShort(e.dateTime)}</div>
                       <div className="font-medium text-slate-800 mt-1.5 truncate" title={e.title}>{e.title}</div>
                       <div className="text-xs text-slate-500 mt-0.5 truncate" title={e.details}>{e.details || '-'}</div>
-                      <span className="inline-block mt-1.5 text-xs font-semibold text-slate-600 bg-slate-200 px-1.5 py-0.5 rounded">
+                      <span className={`inline-block mt-1.5 text-xs font-semibold px-1.5 py-0.5 rounded border ${eventTypeBadgeClass(e)}`}>
                         {e.isProspectFollowUp ? 'PROSP' : (e.eventType === 'MONEX' ? 'MONEX' : 'ANA')}
                       </span>
                     </div>
