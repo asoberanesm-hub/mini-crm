@@ -45,6 +45,7 @@ router.get('/', async (req, res, next) => {
         dateTime: e.dateTime,
         title: e.title,
         details: e.details || '',
+        eventType: e.eventType || 'ANA',
       }))
       const followUpEvents = prospectos.map(buildProspectFollowUpEvents(y, m, d))
       const all = [...agendaEvents, ...followUpEvents].sort(
@@ -67,6 +68,7 @@ router.get('/', async (req, res, next) => {
         dateTime: e.dateTime,
         title: e.title,
         details: e.details || '',
+        eventType: e.eventType || 'ANA',
       }))
       const followUpEvents = prospectos.map((p) => {
         const d = new Date(p.fechaSeguimiento)
@@ -91,14 +93,16 @@ router.get('/', async (req, res, next) => {
   }
 })
 
+const eventTypeEnum = z.enum(['MONEX', 'ANA'])
 const postSchema = z.object({
   dateTime: z.string().min(1),
   title: z.string().min(1),
   details: z.string().optional().default(''),
+  eventType: eventTypeEnum.optional().default('ANA'),
 }).transform((data) => {
   const d = new Date(data.dateTime)
   if (Number.isNaN(d.getTime())) throw new Error('dateTime inválido')
-  return { dateTime: d, title: data.title.trim(), details: (data.details || '').trim() }
+  return { dateTime: d, title: data.title.trim(), details: (data.details || '').trim(), eventType: data.eventType || 'ANA' }
 })
 
 router.post('/', async (req, res, next) => {
@@ -109,12 +113,14 @@ router.post('/', async (req, res, next) => {
       dateTime: data.dateTime,
       title: data.title,
       details: data.details || '',
+      eventType: data.eventType || 'ANA',
     })
     res.status(201).json({
       id: doc._id,
       dateTime: doc.dateTime,
       title: doc.title,
       details: doc.details || '',
+      eventType: doc.eventType || 'ANA',
     })
   } catch (e) {
     if (e.name === 'ZodError') {
@@ -130,6 +136,7 @@ const putSchema = z.object({
   dateTime: z.string().optional(),
   title: z.string().min(1).optional(),
   details: z.string().optional(),
+  eventType: eventTypeEnum.optional(),
 }).transform((data) => {
   const out = {}
   if (data.dateTime !== undefined) {
@@ -139,6 +146,7 @@ const putSchema = z.object({
   }
   if (data.title !== undefined) out.title = data.title.trim()
   if (data.details !== undefined) out.details = data.details.trim()
+  if (data.eventType !== undefined) out.eventType = data.eventType
   return out
 })
 
@@ -153,6 +161,7 @@ router.put('/:id', async (req, res, next) => {
       dateTime: doc.dateTime,
       title: doc.title,
       details: doc.details || '',
+      eventType: doc.eventType || 'ANA',
     })
   } catch (e) {
     if (e.name === 'ZodError') {

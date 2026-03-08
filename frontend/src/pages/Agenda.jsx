@@ -47,6 +47,7 @@ export default function Agenda() {
 
   const [nuevoTitulo, setNuevoTitulo] = useState('')
   const [nuevoDetalles, setNuevoDetalles] = useState('')
+  const [nuevoEventType, setNuevoEventType] = useState('ANA')
   const [nuevaFecha, setNuevaFecha] = useState(toInputDate(now))
   const [nuevaHora, setNuevaHora] = useState('09:00')
   const [editingEvent, setEditingEvent] = useState(null)
@@ -97,6 +98,7 @@ export default function Agenda() {
       const end = addHours(start, 1)
       return {
         ...e,
+        eventType: e.eventType || (e.isProspectFollowUp ? null : 'ANA'),
         start,
         end,
       }
@@ -124,7 +126,7 @@ export default function Agenda() {
     e.preventDefault()
     if (!nuevoTitulo.trim()) return
     const dateTime = `${nuevaFecha}T${nuevaHora}:00`
-    crear.mutate({ dateTime, title: nuevoTitulo.trim(), details: nuevoDetalles.trim() || '' })
+    crear.mutate({ dateTime, title: nuevoTitulo.trim(), details: nuevoDetalles.trim() || '', eventType: nuevoEventType })
   }
 
   const handleGuardarEdit = (e) => {
@@ -134,7 +136,12 @@ export default function Agenda() {
     const dateTime = d.length === 16 ? d + ':00' : d
     actualizar.mutate({
       id: editingEvent.id,
-      payload: { dateTime, title: editingEvent.title.trim(), details: (editingEvent.details || '').trim() },
+      payload: {
+        dateTime,
+        title: editingEvent.title.trim(),
+        details: (editingEvent.details || '').trim(),
+        eventType: editingEvent.eventType || 'ANA',
+      },
     })
   }
 
@@ -149,15 +156,25 @@ export default function Agenda() {
     if (event.isProspectFollowUp) {
       setEditingEvent(null)
     } else {
-      setEditingEvent({ ...event, dateTime: event.start })
+      setEditingEvent({ ...event, dateTime: event.start, eventType: event.eventType || 'ANA' })
     }
   }
 
   const eventPropGetter = (event) => {
-    if (event.isProspectFollowUp) {
-      return { className: 'rbc-event-seguimiento' }
-    }
-    return {}
+    if (event.isProspectFollowUp) return { className: 'rbc-event-seguimiento' }
+    if (event.eventType === 'MONEX') return { className: 'rbc-event-monex' }
+    return { className: 'rbc-event-ana' }
+  }
+
+  const EventComponent = ({ event }) => {
+    const label = event.isProspectFollowUp ? 'PROSP' : (event.eventType === 'MONEX' ? 'MONEX' : 'ANA')
+    const title = event.title || ''
+    return (
+      <span className="block truncate" title={title}>
+        <span className="opacity-90 font-semibold text-[10px] uppercase tracking-wide mr-1">[{label}]</span>
+        {title}
+      </span>
+    )
   }
 
   if (isLoading) return <LoadingModule refetch={refetch} />
@@ -194,9 +211,9 @@ export default function Agenda() {
                         <div className="text-xs text-slate-500 mt-0.5">
                           {formatDateShort(e.dateTime)} · {formatTime(e.dateTime)}
                         </div>
-                        {e.isProspectFollowUp && (
-                          <span className="text-xs text-amber-700 mt-1 inline-block">Seguimiento</span>
-                        )}
+                        <span className="text-xs font-semibold text-slate-500 mt-1 inline-block">
+                          {e.isProspectFollowUp ? 'PROSP' : (e.eventType === 'MONEX' ? 'MONEX' : 'ANA')}
+                        </span>
                       </div>
                     ))
                   )}
@@ -219,9 +236,9 @@ export default function Agenda() {
                         <div className="text-xs text-slate-500 mt-0.5">
                           {formatDateShort(e.dateTime)} · {formatTime(e.dateTime)}
                         </div>
-                        {e.isProspectFollowUp && (
-                          <span className="text-xs text-amber-700 mt-1 inline-block">Seguimiento</span>
-                        )}
+                        <span className="text-xs font-semibold text-slate-500 mt-1 inline-block">
+                          {e.isProspectFollowUp ? 'PROSP' : (e.eventType === 'MONEX' ? 'MONEX' : 'ANA')}
+                        </span>
                       </div>
                     ))
                   )}
@@ -247,8 +264,24 @@ export default function Agenda() {
             {showAddForm && (
               <form
                 onSubmit={handleCrear}
-                className="bg-slate-50 rounded-lg p-4 mb-4 flex flex-wrap items-end gap-3 border border-slate-200"
+                className="bg-slate-50 rounded-lg p-4 mb-4 border border-slate-200 space-y-4"
               >
+                <div className="w-full">
+                  <p className="text-sm font-semibold text-slate-700 mb-2">¿Evento MONEX o personal (ANA)?</p>
+                  <div className="flex flex-wrap gap-2">
+                    <label className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border-2 cursor-pointer transition-colors ${nuevoEventType === 'MONEX' ? 'border-sky-600 bg-sky-50' : 'bg-white border-slate-300 hover:border-sky-300'}`}>
+                      <input type="radio" name="nuevoEventType" value="MONEX" checked={nuevoEventType === 'MONEX'} onChange={(e) => setNuevoEventType(e.target.value)} className="text-sky-600" />
+                      <span className="font-medium text-slate-800">MONEX</span>
+                      <span className="text-slate-500 text-sm">(evento MONEX)</span>
+                    </label>
+                    <label className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border-2 cursor-pointer transition-colors ${nuevoEventType === 'ANA' ? 'border-sky-600 bg-sky-50' : 'bg-white border-slate-300 hover:border-sky-300'}`}>
+                      <input type="radio" name="nuevoEventType" value="ANA" checked={nuevoEventType === 'ANA'} onChange={(e) => setNuevoEventType(e.target.value)} className="text-sky-600" />
+                      <span className="font-medium text-slate-800">ANA</span>
+                      <span className="text-slate-500 text-sm">(evento personal)</span>
+                    </label>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-end gap-3">
                 <input
                   type="date"
                   value={nuevaFecha}
@@ -285,6 +318,7 @@ export default function Agenda() {
                 </button>
                 {crear.isError && <span className="text-red-600 text-sm">{crear.error?.message}</span>}
                 {crear.isSuccess && <span className="text-green-600 text-sm">Guardado.</span>}
+                </div>
               </form>
             )}
 
@@ -294,6 +328,17 @@ export default function Agenda() {
                 className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4 flex flex-wrap items-end gap-3"
               >
                 <span className="w-full text-sm font-medium text-amber-800">Editando evento</span>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Tipo</label>
+                  <select
+                    value={editingEvent.eventType || 'ANA'}
+                    onChange={(e) => setEditingEvent((ev) => ({ ...ev, eventType: e.target.value }))}
+                    className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white min-w-[140px]"
+                  >
+                    <option value="MONEX">MONEX</option>
+                    <option value="ANA">ANA</option>
+                  </select>
+                </div>
                 <input
                   type="date"
                   value={toInputDate(editingEvent.dateTime)}
@@ -352,7 +397,7 @@ export default function Agenda() {
                     <p className="text-xs text-slate-500 mt-2">
                       {formatDateShort(selectedEvent.start)} · {formatTime(selectedEvent.start)}
                     </p>
-                    <span className="inline-block mt-2 text-xs text-amber-700 bg-amber-100 px-2 py-1 rounded">Seguimiento desde Prospección</span>
+                    <span className="inline-block mt-2 text-xs font-semibold text-amber-800 bg-amber-100 px-2 py-1 rounded">PROSP — desde Prospección</span>
                   </div>
                   <button
                     type="button"
@@ -374,6 +419,7 @@ export default function Agenda() {
                 titleAccessor="title"
                 onSelectEvent={handleSelectEvent}
                 eventPropGetter={eventPropGetter}
+                components={{ event: EventComponent }}
                 views={['month', 'week']}
                 defaultView="month"
                 messages={{
@@ -391,6 +437,21 @@ export default function Agenda() {
                 }}
                 culture="es"
               />
+            </div>
+            <div className="flex flex-wrap items-center gap-4 mt-3 pt-3 border-t border-slate-200 text-sm text-slate-600">
+              <span className="font-medium text-slate-500">Leyenda:</span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded bg-[#d97706] border border-[#b45309]" />
+                PROSP (Prospección)
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded bg-[#0369a1] border border-[#0284c7]" />
+                MONEX (evento MONEX)
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded bg-[#0d9488] border border-[#0f766e]" />
+                ANA (evento personal)
+              </span>
             </div>
           </div>
 
@@ -414,9 +475,9 @@ export default function Agenda() {
                       <div className="text-xs text-slate-500 mt-0.5">{formatDateShort(e.dateTime)}</div>
                       <div className="font-medium text-slate-800 mt-1.5 truncate" title={e.title}>{e.title}</div>
                       <div className="text-xs text-slate-500 mt-0.5 truncate" title={e.details}>{e.details || '-'}</div>
-                      {e.isProspectFollowUp && (
-                        <span className="inline-block mt-1.5 text-xs text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">Seguimiento</span>
-                      )}
+                      <span className="inline-block mt-1.5 text-xs font-semibold text-slate-600 bg-slate-200 px-1.5 py-0.5 rounded">
+                        {e.isProspectFollowUp ? 'PROSP' : (e.eventType === 'MONEX' ? 'MONEX' : 'ANA')}
+                      </span>
                     </div>
                   ))}
                 </div>

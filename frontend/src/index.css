@@ -3,12 +3,45 @@
 @tailwind utilities;
 
 /* React Big Calendar - ajustes para CRM */
+
+/* Eventos MONEX (evento MONEX) */
+.rbc-event.rbc-event-monex {
+  background: #0369a1;
+  border-color: #0284c7;
+  color: #fff;
+}
+.rbc-event.rbc-event-monex:hover {
+  background: #0284c7;
+  color: #fff;
+}
+
+/* Eventos ANA (evento personal) */
+.rbc-event.rbc-event-ana {
+  background: #0d9488;
+  border-color: #0f766e;
+  color: #fff;
+}
+.rbc-event.rbc-event-ana:hover {
+  background: #0f766e;
+  color: #fff;
+}
+
+/* Eventos de Prospección (fecha de seguimiento) */
+.rbc-event.rbc-event-seguimiento {
+  background: #d97706;
+  border-color: #b45309;
+  color: #fff;
+}
+.rbc-event.rbc-event-seguimiento:hover {
+  background: #b45309;
+  color: #fff;
+}
+
 .rbc-calendar { font-family: inherit; }
 .rbc-header { padding: 10px 4px; font-weight: 600; font-size: 0.75rem; }
 .rbc-month-view { border-radius: 8px; overflow: hidden; }
 .rbc-day-bg + .rbc-day-bg { border-left: 1px solid #e2e8f0; }
-.rbc-event { padding: 2px 6px; font-size: 0.75rem; border-radius: 4px; }
-.rbc-event.rbc-event-seguimiento { background: #f59e0b; border-color: #d97706; }
+.rbc-event { padding: 2px 6px; font-size: 0.75rem; border-radius: 4px; border-left-width: 3px; }
 .rbc-today { background-color: #f0f9ff; }
 .rbc-off-range-bg { background: #f8fafc; }
 .rbc-toolbar { margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
