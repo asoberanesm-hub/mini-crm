@@ -506,7 +506,7 @@ export default function Agenda() {
               </div>
             )}
 
-            <div className="min-h-[400px]">
+            <div className="max-h-[55vh] min-h-[320px] overflow-y-auto rounded-lg border border-slate-200">
               <Calendar
                 localizer={localizer}
                 events={calendarEvents}
