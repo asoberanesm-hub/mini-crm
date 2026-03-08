@@ -1,3 +1,18 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* React Big Calendar - ajustes para CRM */
+.rbc-calendar { font-family: inherit; }
+.rbc-header { padding: 10px 4px; font-weight: 600; font-size: 0.75rem; }
+.rbc-month-view { border-radius: 8px; overflow: hidden; }
+.rbc-day-bg + .rbc-day-bg { border-left: 1px solid #e2e8f0; }
+.rbc-event { padding: 2px 6px; font-size: 0.75rem; border-radius: 4px; }
+.rbc-event.rbc-event-seguimiento { background: #f59e0b; border-color: #d97706; }
+.rbc-today { background-color: #f0f9ff; }
+.rbc-off-range-bg { background: #f8fafc; }
+.rbc-toolbar { margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
+.rbc-toolbar button { padding: 0.4rem 0.75rem; border-radius: 6px; font-size: 0.875rem; }
+.rbc-toolbar button.rbc-active { background: #0369a1; color: white; border-color: #0369a1; }
+.rbc-toolbar button:hover { background: #e2e8f0; }
+.rbc-toolbar button.rbc-active:hover { background: #0284c7; color: white; }

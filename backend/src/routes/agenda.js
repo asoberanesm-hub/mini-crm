@@ -1,15 +1,28 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import AgendaEvent from '../models/AgendaEvent.js'
+import Prospecto from '../models/Prospecto.js'
 import { isConnected } from '../lib/db.js'
 
 const router = Router()
 
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/
 
+/** Eventos del día a las 10:00 por cada prospecto con fechaSeguimiento ese día (Prospección). */
+function buildProspectFollowUpEvents(y, m, d) {
+  const dateTime = new Date(y, m - 1, d, 10, 0, 0, 0)
+  return (prospect) => ({
+    id: `prospect-${prospect._id}`,
+    dateTime,
+    title: prospect.name || 'Prospecto',
+    details: 'Seguimiento (Prospección) — comunicarse con la empresa',
+    isProspectFollowUp: true,
+  })
+}
+
 /**
  * GET /api/v1/agenda?date=YYYY-MM-DD
- * Devuelve eventos del día.
+ * Devuelve eventos del día (agenda + seguimientos de prospectos a las 10:00).
  *
  * GET /api/v1/agenda?from=YYYY-MM-DD&to=YYYY-MM-DD
  * Devuelve eventos en el rango [from 00:00, to 23:59:59].
@@ -23,15 +36,21 @@ router.get('/', async (req, res, next) => {
       const [y, m, d] = String(date).split('-').map(Number)
       const start = new Date(y, m - 1, d, 0, 0, 0, 0)
       const end = new Date(y, m - 1, d, 23, 59, 59, 999)
-      const events = await AgendaEvent.find({
-        dateTime: { $gte: start, $lte: end },
-      }).sort({ dateTime: 1 }).lean()
-      return res.json(events.map((e) => ({
+      const [agendaDocs, prospectos] = await Promise.all([
+        AgendaEvent.find({ dateTime: { $gte: start, $lte: end } }).sort({ dateTime: 1 }).lean(),
+        Prospecto.find({ promotorId: null, fechaSeguimiento: { $gte: start, $lte: end } }).lean(),
+      ])
+      const agendaEvents = agendaDocs.map((e) => ({
         id: e._id,
         dateTime: e.dateTime,
         title: e.title,
         details: e.details || '',
-      })))
+      }))
+      const followUpEvents = prospectos.map(buildProspectFollowUpEvents(y, m, d))
+      const all = [...agendaEvents, ...followUpEvents].sort(
+        (a, b) => new Date(a.dateTime) - new Date(b.dateTime)
+      )
+      return res.json(all)
     }
 
     if (from && to && dateRegex.test(String(from)) && dateRegex.test(String(to))) {
@@ -39,15 +58,31 @@ router.get('/', async (req, res, next) => {
       const [y2, m2, d2] = String(to).split('-').map(Number)
       const start = new Date(y1, m1 - 1, d1, 0, 0, 0, 0)
       const end = new Date(y2, m2 - 1, d2, 23, 59, 59, 999)
-      const events = await AgendaEvent.find({
-        dateTime: { $gte: start, $lte: end },
-      }).sort({ dateTime: 1 }).lean()
-      return res.json(events.map((e) => ({
+      const [agendaDocs, prospectos] = await Promise.all([
+        AgendaEvent.find({ dateTime: { $gte: start, $lte: end } }).sort({ dateTime: 1 }).lean(),
+        Prospecto.find({ promotorId: null, fechaSeguimiento: { $gte: start, $lte: end } }).lean(),
+      ])
+      const agendaEvents = agendaDocs.map((e) => ({
         id: e._id,
         dateTime: e.dateTime,
         title: e.title,
         details: e.details || '',
-      })))
+      }))
+      const followUpEvents = prospectos.map((p) => {
+        const d = new Date(p.fechaSeguimiento)
+        const dateTime = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 10, 0, 0, 0)
+        return {
+          id: `prospect-${p._id}`,
+          dateTime,
+          title: p.name || 'Prospecto',
+          details: 'Fecha de seguimiento',
+          isProspectFollowUp: true,
+        }
+      })
+      const all = [...agendaEvents, ...followUpEvents].sort(
+        (a, b) => new Date(a.dateTime) - new Date(b.dateTime)
+      )
+      return res.json(all)
     }
 
     return res.json([])
