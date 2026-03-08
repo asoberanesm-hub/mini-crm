@@ -127,8 +127,19 @@ export default function Agenda() {
       .sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime))
   }, [rawEvents, nowTime])
 
-  const proximosPanel = proximosAll.slice(0, 6)
-  const proximosList = proximosAll.slice(0, 10)
+  /** Panel vertical: solo MONEX y PROSP (máx 6). */
+  const proximosPanel = useMemo(() => {
+    return proximosAll
+      .filter((e) => e.isProspectFollowUp || e.eventType === 'MONEX')
+      .slice(0, 6)
+  }, [proximosAll])
+
+  /** Lista horizontal: solo ANA (máx 10). */
+  const proximosList = useMemo(() => {
+    return proximosAll
+      .filter((e) => !e.isProspectFollowUp && e.eventType === 'ANA')
+      .slice(0, 10)
+  }, [proximosAll])
 
   const handleCrear = (e) => {
     e.preventDefault()
@@ -229,6 +240,7 @@ export default function Agenda() {
                           {e.isProspectFollowUp ? (
                             <Link
                               to="/ana/prospeccion"
+                              state={{ editProspectId: String(e.id).replace(/^prospect-/, '') }}
                               className="px-2 py-1 text-xs font-medium text-sky-600 hover:text-sky-700 hover:underline"
                               onClick={(ev) => ev.stopPropagation()}
                             >
@@ -263,10 +275,10 @@ export default function Agenda() {
               </section>
 
               <section>
-                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Próximos</h3>
+                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Próximos (MONEX y PROSP)</h3>
                 <div className="space-y-1.5 max-h-56 overflow-y-auto">
                   {proximosPanel.length === 0 ? (
-                    <p className="text-sm text-slate-400 py-2">No hay recordatorios próximos</p>
+                    <p className="text-sm text-slate-400 py-2">No hay próximos MONEX o PROSP</p>
                   ) : (
                     proximosPanel.map((e) => (
                       <div
@@ -287,6 +299,7 @@ export default function Agenda() {
                           {e.isProspectFollowUp ? (
                             <Link
                               to="/ana/prospeccion"
+                              state={{ editProspectId: String(e.id).replace(/^prospect-/, '') }}
                               className="px-2 py-1 text-xs font-medium text-sky-600 hover:text-sky-700 hover:underline"
                             >
                               Editar
@@ -472,6 +485,15 @@ export default function Agenda() {
                       {formatDateShort(selectedEvent.start)} · {formatTime(selectedEvent.start)}
                     </p>
                     <span className="inline-block mt-2 text-xs font-semibold text-amber-800 bg-amber-100 px-2 py-1 rounded">PROSP — desde Prospección</span>
+                    <div className="mt-3">
+                      <Link
+                        to="/ana/prospeccion"
+                        state={{ editProspectId: String(selectedEvent.id).replace(/^prospect-/, '') }}
+                        className="inline-block px-3 py-1.5 text-sm font-medium text-sky-600 bg-sky-100 rounded-lg hover:bg-sky-200"
+                      >
+                        Editar en Prospección
+                      </Link>
+                    </div>
                   </div>
                   <button
                     type="button"
@@ -529,14 +551,14 @@ export default function Agenda() {
             </div>
           </div>
 
-          {/* Próximos eventos (máx 10) */}
+          {/* Próximos eventos ANA (máx 10) */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <h2 className="px-4 py-3 font-semibold text-slate-800 border-b border-slate-100 bg-slate-50/50">
-              Próximos eventos
+              Próximos eventos (ANA)
             </h2>
             <div className="p-4">
               {proximosList.length === 0 ? (
-                <p className="text-slate-500 py-6 text-center text-sm">No hay eventos próximos</p>
+                <p className="text-slate-500 py-6 text-center text-sm">No hay eventos próximos (ANA)</p>
               ) : (
                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                   {proximosList.map((e) => (
