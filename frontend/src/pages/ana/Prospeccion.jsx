@@ -124,6 +124,7 @@ export default function Prospeccion() {
     actualizar.mutate({
       id: editingRow._id,
       payload: {
+        name: (editingRow.name || '').trim() || undefined,
         exim: editingRow.exim || undefined,
         ciudad: editingRow.ciudad?.trim() || undefined,
         telefono: editingRow.telefono?.trim() || undefined,
@@ -185,7 +186,9 @@ export default function Prospeccion() {
 
       {editingRow && (
         <form onSubmit={handleEditSave} className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4 flex flex-wrap items-end gap-3">
-          <span className="w-full text-sm font-medium text-amber-800">Campos habilitados — Editando: {editingRow.name} (modifica y guarda)</span>
+          <span className="w-full text-sm font-medium text-amber-800">Campos habilitados — Editando (modifica y guarda)</span>
+          <span className="text-slate-600 text-xs">Nombre</span>
+          <input type="text" placeholder="Nombre *" value={editingRow.name || ''} onChange={(e) => setEditingRow((r) => ({ ...r, name: e.target.value }))} className="px-3 py-2 border border-slate-300 rounded text-sm min-w-[140px]" required />
           <span className="text-slate-600 text-xs">Exim</span>
           <EximSelect value={editingRow.exim || ''} onChange={(v) => setEditingRow((r) => ({ ...r, exim: v }))} className="px-2 py-2 border border-slate-300 rounded text-sm min-w-[90px]" />
           <input type="text" placeholder="Ciudad" value={editingRow.ciudad || ''} onChange={(e) => setEditingRow((r) => ({ ...r, ciudad: e.target.value }))} className="px-3 py-2 border border-slate-300 rounded text-sm min-w-[100px]" />
