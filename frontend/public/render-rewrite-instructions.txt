@@ -1,0 +1,12 @@
+RENDER: Rewrite para rutas de la SPA (evitar "Not Found" en /ana/prospeccion, etc.)
+
+1. Entra a https://dashboard.render.com
+2. Abre el servicio "mini-crm-frontend" (Static Site)
+3. En el menú izquierdo, ve a "Redirects/Rewrites"
+4. Añade una regla:
+   - Source Path:   /*
+   - Destination:  /index.html
+   - Action:       Rewrite (no Redirect)
+5. Guarda
+
+Así todas las rutas (/ana/prospeccion, /agenda, etc.) servirán index.html y React Router podrá mostrarlas.

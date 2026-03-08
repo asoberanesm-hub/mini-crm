@@ -25,4 +25,7 @@ const schema = new mongoose.Schema({
   fechaSeguimiento: Date,
 }, { timestamps: true })
 
+// Consulta /ana/prospeccion: find({ promotorId: null }).sort({ fechaSeguimiento: 1, name: 1 })
+schema.index({ promotorId: 1, fechaSeguimiento: 1, name: 1 })
+
 export default mongoose.model('Prospecto', schema)

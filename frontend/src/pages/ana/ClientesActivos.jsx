@@ -1,14 +1,16 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { fetchApi } from '../../lib/api'
 import ErrorApi from '../../components/ErrorApi'
+import LoadingModule from '../../components/LoadingModule'
 
 export default function ClientesActivos() {
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['ana', 'clientes-activos'],
     queryFn: () => fetchApi('/ana/clientes-activos'),
+    placeholderData: keepPreviousData,
   })
 
-  if (isLoading) return <div className="p-6">Cargando...</div>
+  if (isLoading) return <LoadingModule refetch={refetch} />
   if (error) return <ErrorApi error={error} />
 
   const list = Array.isArray(data) ? data : []

@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { fetchApi, postApi, putApi, deleteApi } from '../lib/api'
 import ErrorApi from '../components/ErrorApi'
+import LoadingModule from '../components/LoadingModule'
 
 function toInputDate(d) {
   if (!d) return ''
@@ -37,9 +38,10 @@ export default function Agenda() {
   const [editFecha, setEditFecha] = useState('')
   const [editHora, setEditHora] = useState('')
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['agenda', fecha],
     queryFn: () => fetchApi(`/agenda?date=${fecha}`),
+    placeholderData: keepPreviousData,
   })
 
   const crear = useMutation({
@@ -101,6 +103,7 @@ export default function Agenda() {
 
   const list = Array.isArray(data) ? data : []
 
+  if (isLoading) return <LoadingModule refetch={refetch} />
   if (error) return <ErrorApi error={error} />
 
   return (

@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { fetchApi, postApi, putApi, deleteApi } from '../../lib/api'
 import ErrorApi from '../../components/ErrorApi'
+import LoadingModule from '../../components/LoadingModule'
 
 function fmt(d) {
   return d ? new Date(d).toLocaleDateString('es-MX') : '-'
@@ -44,9 +45,10 @@ export default function Prospeccion() {
   const [comentarioFase3, setComentarioFase3] = useState('')
   const [editingRow, setEditingRow] = useState(null)
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['ana', 'prospeccion'],
     queryFn: () => fetchApi('/ana/prospeccion'),
+    placeholderData: keepPreviousData,
   })
 
   const crear = useMutation({
@@ -146,7 +148,7 @@ export default function Prospeccion() {
     })
   }
 
-  if (isLoading) return <div className="p-6">Cargando...</div>
+  if (isLoading) return <LoadingModule refetch={refetch} />
   if (error) return <ErrorApi error={error} />
 
   const list = Array.isArray(data) ? data : []

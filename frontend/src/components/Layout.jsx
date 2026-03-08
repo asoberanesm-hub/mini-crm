@@ -1,6 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Outlet, NavLink } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
+import { fetchApi } from '../lib/api'
 import Chatbot from './Chatbot'
+
+// Mantener despierto el backend en Render: ping a /health cada 10 min mientras la app esté abierta
+const KEEP_ALIVE_MINUTES = 10
+const isProd = typeof window !== 'undefined' && !/localhost|127\.0\.0\.1/.test(window.location.hostname)
 
 const modulos = [
   { to: '/', label: 'Dashboard' },
@@ -27,12 +33,46 @@ const modulos = [
   },
 ]
 
+// Prefetch: al pasar el ratón por un enlace, cargamos los datos de ese módulo para que al hacer clic ya estén (o casi).
+const prefetchConfig = {
+  '/': { queryKey: ['metrics', 'overview'], queryFn: () => fetchApi('/metrics/overview') },
+  '/ana/clientes-activos': { queryKey: ['ana', 'clientes-activos'], queryFn: () => fetchApi('/ana/clientes-activos') },
+  '/ana/prospeccion': { queryKey: ['ana', 'prospeccion'], queryFn: () => fetchApi('/ana/prospeccion') },
+  '/promotores/clientes-nuevos': { queryKey: ['promotores-vistas', 'clientes-nuevos'], queryFn: () => fetchApi('/promotores-vistas/clientes-nuevos') },
+  '/promotores/prospectos': { queryKey: ['promotores-vistas', 'prospectos'], queryFn: () => fetchApi('/promotores-vistas/prospectos') },
+  '/promotores/productos': { queryKey: ['promotores-vistas', 'productos'], queryFn: () => fetchApi('/promotores-vistas/productos') },
+  '/agenda': (() => {
+    const today = new Date().toISOString().slice(0, 10)
+    return { queryKey: ['agenda', today], queryFn: () => fetchApi(`/agenda?date=${today}`) }
+  })(),
+}
+
 export default function Layout() {
+  const queryClient = useQueryClient()
   const [abierto, setAbierto] = useState({ 'ANA SOBERANES': true, PROMOTORES: true, AGENDA: true })
+
+  useEffect(() => {
+    if (!isProd) return
+    const base = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
+    if (!base) return
+    const ping = () => fetch(`${base}/health`, { method: 'GET' }).catch(() => {})
+    const id = setInterval(ping, KEEP_ALIVE_MINUTES * 60 * 1000)
+    return () => clearInterval(id)
+  }, [])
 
   const toggle = (label) => {
     setAbierto((prev) => ({ ...prev, [label]: !prev[label] }))
   }
+
+  const onPrefetch = (to) => {
+    const config = prefetchConfig[to]
+    if (config) queryClient.prefetchQuery({ queryKey: config.queryKey, queryFn: config.queryFn })
+  }
+
+  const navLinkProps = (to) => ({
+    onMouseEnter: () => onPrefetch(to),
+    onFocus: () => onPrefetch(to),
+  })
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -48,6 +88,7 @@ export default function Layout() {
                   key={item.to}
                   to={item.to}
                   end={item.to === '/'}
+                  {...navLinkProps(item.to)}
                   className={({ isActive }) =>
                     `block px-3 py-2 rounded-md mb-1 ${isActive ? 'bg-slate-600' : 'hover:bg-slate-700'}`
                   }
@@ -73,6 +114,7 @@ export default function Layout() {
                       <NavLink
                         key={s.to}
                         to={s.to}
+                        {...navLinkProps(s.to)}
                         className={({ isActive }) =>
                           `block py-1.5 px-2 rounded text-sm mb-0.5 ${isActive ? 'bg-slate-600 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}`
                         }

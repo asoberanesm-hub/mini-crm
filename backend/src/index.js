@@ -18,6 +18,7 @@ import anaRouter from './routes/ana.js'
 import promotoresVistasRouter from './routes/promotoresVistas.js'
 import chatRouter from './routes/chat.js'
 import agendaRouter from './routes/agenda.js'
+import emailRouter from './routes/email.js'
 
 const app = express()
 const PORT = process.env.PORT ?? 3001
@@ -33,6 +34,8 @@ const allowedOrigins = [
   'http://127.0.0.1:5175',
   'http://127.0.0.1:5176',
   'https://mini-crm-frontend-yzpu.onrender.com',
+  'https://monexaysa.lat',
+  'https://www.monexaysa.lat',
 ]
 if (process.env.FRONTEND_URL) {
   const url = process.env.FRONTEND_URL.replace(/\/$/, '')
@@ -71,29 +74,21 @@ app.use('/api/v1/ana', anaRouter)
 app.use('/api/v1/promotores-vistas', promotoresVistasRouter)
 app.use('/api/v1/chat', chatRouter)
 app.use('/api/v1/agenda', agendaRouter)
+app.use('/api/v1/email', emailRouter)
 
 app.use(errorHandler)
 
-// Base de datos: conectar ANTES de aceptar peticiones (evita "no conectada" al cargar)
+// Servidor arranca siempre; MongoDB se conecta en segundo plano (si falla, el resto de la API sigue disponible, p. ej. /email)
 const MONGODB_URI = (process.env.MONGODB_URI || '').trim() || 'mongodb://localhost:27017/mini-crm'
 mongoose.connection.on('disconnected', () => console.warn('MongoDB desconectado. Reconectando...'))
 mongoose.connection.on('reconnected', () => console.log('MongoDB reconectado'))
 
-async function start() {
-  try {
-    await mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 15000,
-      retryWrites: true,
+app.listen(PORT, () => {
+  console.log(`Server en http://localhost:${PORT}`)
+  mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 15000, retryWrites: true })
+    .then(() => console.log('MongoDB conectado'))
+    .catch((err) => {
+      console.error('MongoDB error:', err.message)
+      console.error('  → Revisa MONGODB_URI en backend/.env. La API responde pero las rutas que usan DB fallarán.')
     })
-    console.log('MongoDB conectado')
-  } catch (err) {
-    console.error('MongoDB error:', err.message)
-    console.error('  → Revisa MONGODB_URI en backend/.env')
-    console.error('  → Si usas Atlas: entra a https://cloud.mongodb.com y verifica que el clúster no esté pausado')
-    process.exit(1)
-  }
-  app.listen(PORT, () => {
-    console.log(`Server en http://localhost:${PORT}`)
-  })
-}
-start()
+})
