@@ -23,6 +23,7 @@ const schema = new mongoose.Schema({
   fase3: String,
   comentarioFase3: String,
   fechaSeguimiento: Date,
+  horaSeguimiento: String,
 }, { timestamps: true })
 
 // Consulta /ana/prospeccion: find({ promotorId: null }).sort({ fechaSeguimiento: 1, name: 1 })

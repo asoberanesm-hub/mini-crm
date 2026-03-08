@@ -517,7 +517,7 @@ export default function Agenda() {
                 eventPropGetter={eventPropGetter}
                 components={{ event: EventComponent }}
                 views={['month', 'week']}
-                defaultView="month"
+                defaultView="week"
                 messages={{
                   today: 'Hoy',
                   previous: 'Ant',

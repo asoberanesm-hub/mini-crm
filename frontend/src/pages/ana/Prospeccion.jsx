@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { fetchApi, postApi, putApi, deleteApi } from '../../lib/api'
 import ErrorApi from '../../components/ErrorApi'
@@ -30,6 +31,8 @@ const EximSelect = ({ value, onChange, className }) => (
 
 export default function Prospeccion() {
   const queryClient = useQueryClient()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [nombre, setNombre] = useState('')
   const [exim, setExim] = useState('')
   const [ciudad, setCiudad] = useState('')
@@ -38,11 +41,10 @@ export default function Prospeccion() {
   const [fechaSeguimiento, setFechaSeguimiento] = useState('')
   const [fase1, setFase1] = useState('')
   const [fechaFase1, setFechaFase1] = useState('')
-  const [comentarioFase1, setComentarioFase1] = useState('')
   const [fase2, setFase2] = useState('')
-  const [comentarioFase2, setComentarioFase2] = useState('')
   const [fase3, setFase3] = useState('')
   const [comentarioFase3, setComentarioFase3] = useState('')
+  const [horaSeguimiento, setHoraSeguimiento] = useState('')
   const [editingRow, setEditingRow] = useState(null)
 
   const { data, isLoading, error, refetch } = useQuery({
@@ -89,11 +91,10 @@ export default function Prospeccion() {
     setFechaSeguimiento('')
     setFase1('')
     setFechaFase1('')
-    setComentarioFase1('')
     setFase2('')
-    setComentarioFase2('')
     setFase3('')
     setComentarioFase3('')
+    setHoraSeguimiento('')
   }
 
   const handleSubmit = (e) => {
@@ -108,11 +109,10 @@ export default function Prospeccion() {
       telefono: telefono.trim() || undefined,
       contacto: contacto.trim() || undefined,
       fechaSeguimiento: fechaSeguimiento || undefined,
+      horaSeguimiento: horaSeguimiento.trim() || undefined,
       fase1: fase1 || undefined,
       fechaFase1: fechaFase1 || undefined,
-      comentarioFase1: comentarioFase1.trim() || undefined,
       fase2: fase2 || undefined,
-      comentarioFase2: comentarioFase2.trim() || undefined,
       fase3: fase3 || undefined,
       comentarioFase3: comentarioFase3.trim() || undefined,
     })
@@ -130,11 +130,10 @@ export default function Prospeccion() {
         telefono: editingRow.telefono?.trim() || undefined,
         contacto: editingRow.contacto?.trim() || undefined,
         fechaSeguimiento: editingRow.fechaSeguimiento || undefined,
+        horaSeguimiento: editingRow.horaSeguimiento?.trim() || undefined,
         fase1: editingRow.fase1 || undefined,
         fechaFase1: editingRow.fechaFase1 || undefined,
-        comentarioFase1: editingRow.comentarioFase1?.trim() || undefined,
         fase2: editingRow.fase2 || undefined,
-        comentarioFase2: editingRow.comentarioFase2?.trim() || undefined,
         fase3: editingRow.fase3 || undefined,
         comentarioFase3: editingRow.comentarioFase3?.trim() || undefined,
       },
@@ -146,13 +145,31 @@ export default function Prospeccion() {
       ...row,
       fechaSeguimiento: toInputDate(row.fechaSeguimiento),
       fechaFase1: toInputDate(row.fechaFase1),
+      horaSeguimiento: row.horaSeguimiento ?? '',
     })
   }
 
+  const list = Array.isArray(data) ? data : []
+  const openedEditIdRef = useRef(null)
+
+  useEffect(() => {
+    const editProspectId = location.state?.editProspectId
+    if (!editProspectId || list.length === 0 || openedEditIdRef.current === editProspectId) return
+    const row = list.find((r) => String(r._id) === String(editProspectId))
+    if (row) {
+      openedEditIdRef.current = editProspectId
+      setEditingRow({
+        ...row,
+        fechaSeguimiento: toInputDate(row.fechaSeguimiento),
+        fechaFase1: toInputDate(row.fechaFase1),
+        horaSeguimiento: row.horaSeguimiento ?? '',
+      })
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+  }, [list, location.state?.editProspectId, location.pathname, navigate])
+
   if (isLoading) return <LoadingModule refetch={refetch} />
   if (error) return <ErrorApi error={error} />
-
-  const list = Array.isArray(data) ? data : []
   return (
     <div className="p-6">
       <h1 className="text-2xl font-semibold text-slate-800 mb-2">Prospección</h1>
@@ -169,13 +186,13 @@ export default function Prospeccion() {
         <input type="date" value={fechaFase1} onChange={(e) => setFechaFase1(e.target.value)} className="px-3 py-2 border border-slate-300 rounded text-sm" title="Fecha" />
         <span className="text-slate-500 text-xs font-medium">Fase 1</span>
         <FaseSelect value={fase1} onChange={setFase1} className="px-2 py-2 border border-slate-300 rounded text-sm w-14" />
-        <input type="text" placeholder="Coment. F1" value={comentarioFase1} onChange={(e) => setComentarioFase1(e.target.value)} className="px-3 py-2 border border-slate-300 rounded text-sm min-w-[100px]" />
         <span className="text-slate-500 text-xs font-medium">Fase 2</span>
         <FaseSelect value={fase2} onChange={setFase2} className="px-2 py-2 border border-slate-300 rounded text-sm w-14" />
-        <input type="text" placeholder="Coment. F2" value={comentarioFase2} onChange={(e) => setComentarioFase2(e.target.value)} className="px-3 py-2 border border-slate-300 rounded text-sm min-w-[100px]" />
         <span className="text-slate-500 text-xs font-medium">Fase 3</span>
         <FaseSelect value={fase3} onChange={setFase3} className="px-2 py-2 border border-slate-300 rounded text-sm w-14" />
         <input type="text" placeholder="Coment. F3" value={comentarioFase3} onChange={(e) => setComentarioFase3(e.target.value)} className="px-3 py-2 border border-slate-300 rounded text-sm min-w-[100px]" />
+        <span className="text-slate-500 text-xs font-medium">Hora</span>
+        <input type="time" value={horaSeguimiento} onChange={(e) => setHoraSeguimiento(e.target.value)} className="px-3 py-2 border border-slate-300 rounded text-sm" title="Hora" />
         <input type="date" value={fechaSeguimiento} onChange={(e) => setFechaSeguimiento(e.target.value)} className="px-3 py-2 border border-slate-300 rounded text-sm" title="Fecha seguimiento" />
         <button type="submit" disabled={crear.isPending || !nombre.trim()} className="px-4 py-2 bg-sky-600 text-white rounded text-sm font-medium hover:bg-sky-700 disabled:opacity-50">
           {crear.isPending ? 'Guardando...' : 'Agregar'}
@@ -198,13 +215,13 @@ export default function Prospeccion() {
           <input type="date" value={editingRow.fechaFase1 || ''} onChange={(e) => setEditingRow((r) => ({ ...r, fechaFase1: e.target.value }))} className="px-3 py-2 border border-slate-300 rounded text-sm" title="Fecha" />
           <span className="text-slate-600 text-xs">F1</span>
           <FaseSelect value={editingRow.fase1 || ''} onChange={(v) => setEditingRow((r) => ({ ...r, fase1: v }))} className="px-2 py-2 border border-slate-300 rounded text-sm w-14" />
-          <input type="text" placeholder="Coment. F1" value={editingRow.comentarioFase1 || ''} onChange={(e) => setEditingRow((r) => ({ ...r, comentarioFase1: e.target.value }))} className="px-3 py-2 border border-slate-300 rounded text-sm min-w-[90px]" />
           <span className="text-slate-600 text-xs">F2</span>
           <FaseSelect value={editingRow.fase2 || ''} onChange={(v) => setEditingRow((r) => ({ ...r, fase2: v }))} className="px-2 py-2 border border-slate-300 rounded text-sm w-14" />
-          <input type="text" placeholder="Coment. F2" value={editingRow.comentarioFase2 || ''} onChange={(e) => setEditingRow((r) => ({ ...r, comentarioFase2: e.target.value }))} className="px-3 py-2 border border-slate-300 rounded text-sm min-w-[90px]" />
           <span className="text-slate-600 text-xs">F3</span>
           <FaseSelect value={editingRow.fase3 || ''} onChange={(v) => setEditingRow((r) => ({ ...r, fase3: v }))} className="px-2 py-2 border border-slate-300 rounded text-sm w-14" />
           <input type="text" placeholder="Coment. F3" value={editingRow.comentarioFase3 || ''} onChange={(e) => setEditingRow((r) => ({ ...r, comentarioFase3: e.target.value }))} className="px-3 py-2 border border-slate-300 rounded text-sm min-w-[90px]" />
+          <span className="text-slate-600 text-xs">Hora</span>
+          <input type="time" value={editingRow.horaSeguimiento || ''} onChange={(e) => setEditingRow((r) => ({ ...r, horaSeguimiento: e.target.value }))} className="px-3 py-2 border border-slate-300 rounded text-sm" title="Hora" />
           <input type="date" value={editingRow.fechaSeguimiento || ''} onChange={(e) => setEditingRow((r) => ({ ...r, fechaSeguimiento: e.target.value }))} className="px-3 py-2 border border-slate-300 rounded text-sm" title="Fecha seguimiento" />
           <button type="submit" disabled={actualizar.isPending} className="px-4 py-2 bg-amber-600 text-white rounded text-sm font-medium hover:bg-amber-700 disabled:opacity-50">Guardar</button>
           <button type="button" onClick={() => setEditingRow(null)} className="px-4 py-2 bg-slate-200 text-slate-700 rounded text-sm font-medium hover:bg-slate-300">Cancelar</button>
@@ -213,7 +230,7 @@ export default function Prospeccion() {
       )}
 
       <p className="text-slate-500 text-sm mb-2">
-        Para editar un registro ya agregado, haz clic en <strong>Habilitar edición</strong> en la fila; se habilitarán los campos arriba para modificar y guardar. Puedes <strong>Eliminar</strong> cualquier prospecto desde el botón en cada fila.
+        Para editar un registro ya agregado, haz clic en <strong>EDITAR</strong> en la fila; se habilitarán los campos arriba para modificar y guardar. Puedes <strong>Eliminar</strong> cualquier prospecto desde el botón en cada fila.
       </p>
       {eliminar.isError && <p className="text-red-600 text-sm mb-2">{eliminar.error?.message}</p>}
       <div className="bg-white rounded-lg shadow overflow-x-auto">
@@ -227,18 +244,17 @@ export default function Prospeccion() {
               <th className="px-3 py-2 text-left text-xs font-medium text-slate-600 uppercase">Contacto</th>
               <th className="px-3 py-2 text-left text-xs font-medium text-slate-600 uppercase">Fecha</th>
               <th className="px-3 py-2 text-left text-xs font-medium text-slate-600 uppercase">Fase 1</th>
-              <th className="px-3 py-2 text-left text-xs font-medium text-slate-600 uppercase">Comentario F1</th>
               <th className="px-3 py-2 text-left text-xs font-medium text-slate-600 uppercase">Fase 2</th>
-              <th className="px-3 py-2 text-left text-xs font-medium text-slate-600 uppercase">Comentario F2</th>
               <th className="px-3 py-2 text-left text-xs font-medium text-slate-600 uppercase">Fase 3</th>
               <th className="px-3 py-2 text-left text-xs font-medium text-slate-600 uppercase">Comentario F3</th>
               <th className="px-3 py-2 text-left text-xs font-medium text-slate-600 uppercase">Fecha seguimiento</th>
+              <th className="px-3 py-2 text-left text-xs font-medium text-slate-600 uppercase">Hora</th>
               <th className="px-3 py-2 text-right text-xs font-medium text-slate-600 uppercase">Acción</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200">
             {list.length ? list.map((row) => (
-              <tr key={row._id} className="hover:bg-slate-50">
+              <tr key={row._id} className="hover:bg-slate-50 text-xs">
                 <td className="px-3 py-2 font-medium whitespace-nowrap">{row.name}</td>
                 <td className="px-3 py-2 text-slate-600">{row.exim ?? '-'}</td>
                 <td className="px-3 py-2 text-slate-600">{row.ciudad ?? '-'}</td>
@@ -246,15 +262,14 @@ export default function Prospeccion() {
                 <td className="px-3 py-2 text-slate-600">{row.contacto ?? '-'}</td>
                 <td className="px-3 py-2 whitespace-nowrap">{fmt(row.fechaFase1)}</td>
                 <td className="px-3 py-2">{row.fase1 ?? '-'}</td>
-                <td className="px-3 py-2 max-w-[120px] truncate" title={row.comentarioFase1}>{row.comentarioFase1 ?? '-'}</td>
                 <td className="px-3 py-2">{row.fase2 ?? '-'}</td>
-                <td className="px-3 py-2 max-w-[120px] truncate" title={row.comentarioFase2}>{row.comentarioFase2 ?? '-'}</td>
                 <td className="px-3 py-2">{row.fase3 ?? '-'}</td>
                 <td className="px-3 py-2 max-w-[120px] truncate" title={row.comentarioFase3}>{row.comentarioFase3 ?? '-'}</td>
                 <td className="px-3 py-2 whitespace-nowrap">{fmt(row.fechaSeguimiento)}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{row.horaSeguimiento ?? '-'}</td>
                 <td className="px-3 py-2 text-right whitespace-nowrap space-x-2">
-                  <button type="button" onClick={() => startEdit(row)} className="px-3 py-1.5 bg-sky-100 text-sky-700 rounded text-sm font-medium hover:bg-sky-200 border border-sky-200">
-                    Habilitar edición
+                  <button type="button" onClick={() => startEdit(row)} className="px-3 py-1.5 bg-sky-100 text-sky-700 rounded text-xs font-medium hover:bg-sky-200 border border-sky-200">
+                    EDITAR
                   </button>
                   <button type="button" onClick={() => handleEliminar(row)} disabled={eliminar.isPending && eliminar.variables === row._id} className="px-3 py-1.5 bg-red-100 text-red-700 rounded text-sm font-medium hover:bg-red-200 border border-red-200 disabled:opacity-50">
                     {eliminar.isPending && eliminar.variables === row._id ? 'Eliminando...' : 'Eliminar'}

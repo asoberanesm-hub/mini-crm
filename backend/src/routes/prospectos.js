@@ -34,6 +34,7 @@ const bodySchema = z.object({
   fase3: z.string().optional(),
   comentarioFase3: z.string().optional(),
   fechaSeguimiento: z.string().transform(s => parseDateOnly(s)).optional(),
+  horaSeguimiento: z.string().optional(),
 })
 
 router.get('/', async (req, res, next) => {
