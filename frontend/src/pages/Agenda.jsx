@@ -205,15 +205,30 @@ export default function Agenda() {
                     vencidos.map((e) => (
                       <div
                         key={e.id}
-                        className="p-2.5 rounded-lg bg-red-50 border border-red-100 text-slate-800 text-sm"
+                        className="p-2.5 rounded-lg bg-red-50 border border-red-100 text-slate-800 text-sm flex items-start justify-between gap-2"
                       >
-                        <div className="font-medium text-red-800">{e.title}</div>
-                        <div className="text-xs text-slate-500 mt-0.5">
-                          {formatDateShort(e.dateTime)} · {formatTime(e.dateTime)}
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-red-800">{e.title}</div>
+                          <div className="text-xs text-slate-500 mt-0.5">
+                            {formatDateShort(e.dateTime)} · {formatTime(e.dateTime)}
+                          </div>
+                          <span className="text-xs font-semibold text-slate-500 mt-1 inline-block">
+                            {e.isProspectFollowUp ? 'PROSP' : (e.eventType === 'MONEX' ? 'MONEX' : 'ANA')}
+                          </span>
                         </div>
-                        <span className="text-xs font-semibold text-slate-500 mt-1 inline-block">
-                          {e.isProspectFollowUp ? 'PROSP' : (e.eventType === 'MONEX' ? 'MONEX' : 'ANA')}
-                        </span>
+                        {e.isProspectFollowUp ? (
+                          <span className="text-slate-400 text-xs shrink-0" title="Quitar fecha en Prospección">—</span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(ev) => { ev.stopPropagation(); if (window.confirm(`¿Eliminar "${e.title}"?`)) eliminar.mutate(e.id); }}
+                            disabled={eliminar.isPending && eliminar.variables === e.id}
+                            className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-red-600 hover:bg-red-100 disabled:opacity-50"
+                            title="Eliminar"
+                          >
+                            ✕
+                          </button>
+                        )}
                       </div>
                     ))
                   )}
@@ -229,16 +244,31 @@ export default function Agenda() {
                     proximosPanel.map((e) => (
                       <div
                         key={e.id}
-                        className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-800 text-sm hover:border-sky-200 cursor-pointer"
+                        className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-800 text-sm hover:border-sky-200 cursor-pointer flex items-start justify-between gap-2"
                         onClick={() => handleSelectEvent({ ...e, start: new Date(e.dateTime), end: addHours(new Date(e.dateTime), 1) })}
                       >
-                        <div className="font-medium text-slate-800">{e.title}</div>
-                        <div className="text-xs text-slate-500 mt-0.5">
-                          {formatDateShort(e.dateTime)} · {formatTime(e.dateTime)}
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-slate-800">{e.title}</div>
+                          <div className="text-xs text-slate-500 mt-0.5">
+                            {formatDateShort(e.dateTime)} · {formatTime(e.dateTime)}
+                          </div>
+                          <span className="text-xs font-semibold text-slate-500 mt-1 inline-block">
+                            {e.isProspectFollowUp ? 'PROSP' : (e.eventType === 'MONEX' ? 'MONEX' : 'ANA')}
+                          </span>
                         </div>
-                        <span className="text-xs font-semibold text-slate-500 mt-1 inline-block">
-                          {e.isProspectFollowUp ? 'PROSP' : (e.eventType === 'MONEX' ? 'MONEX' : 'ANA')}
-                        </span>
+                        {e.isProspectFollowUp ? (
+                          <span className="text-slate-400 text-xs shrink-0" title="Quitar fecha en Prospección">—</span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(ev) => { ev.stopPropagation(); if (window.confirm(`¿Eliminar "${e.title}"?`)) eliminar.mutate(e.id); }}
+                            disabled={eliminar.isPending && eliminar.variables === e.id}
+                            className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-red-600 hover:bg-red-100 disabled:opacity-50"
+                            title="Eliminar"
+                          >
+                            ✕
+                          </button>
+                        )}
                       </div>
                     ))
                   )}
