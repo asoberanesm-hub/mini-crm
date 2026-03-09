@@ -8,6 +8,4 @@ const schema = new mongoose.Schema({
   conversationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Conversation', default: null },
 }, { timestamps: true })
 
-schema.index({ dateTime: 1 })
-
 export default mongoose.model('AgendaEvent', schema)

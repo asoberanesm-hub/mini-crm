@@ -19,6 +19,7 @@ import promotoresVistasRouter from './routes/promotoresVistas.js'
 import chatRouter from './routes/chat.js'
 import agendaRouter from './routes/agenda.js'
 import emailRouter from './routes/email.js'
+import productosActivosRouter from './routes/productosActivos.js'
 
 const app = express()
 const PORT = process.env.PORT ?? 3001
@@ -75,6 +76,7 @@ app.use('/api/v1/promotores-vistas', promotoresVistasRouter)
 app.use('/api/v1/chat', chatRouter)
 app.use('/api/v1/agenda', agendaRouter)
 app.use('/api/v1/email', emailRouter)
+app.use('/api/v1/productos-activos', productosActivosRouter)
 
 app.use(errorHandler)
 

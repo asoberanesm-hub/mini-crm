@@ -4,6 +4,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import ClientesActivos from './pages/ana/ClientesActivos'
+import ProductosActivos from './pages/ana/ProductosActivos'
 import ProspeccionAna from './pages/ana/Prospeccion'
 import ClientesNuevos from './pages/promotores/ClientesNuevos'
 import ProspectosPromotores from './pages/promotores/Prospectos'
@@ -26,6 +27,7 @@ export default function App() {
       <Route path="/*" element={<Layout />}>
         <Route index element={<Dashboard />} />
         <Route path="ana/clientes-activos" element={<ClientesActivos />} />
+        <Route path="ana/productos-activos" element={<ProductosActivos />} />
         <Route path="ana/prospeccion" element={<ProspeccionAna />} />
         <Route path="promotores/clientes-nuevos" element={<ClientesNuevos />} />
         <Route path="promotores/prospectos" element={<ProspectosPromotores />} />

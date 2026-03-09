@@ -2,11 +2,22 @@ import { Router } from 'express'
 import { z } from 'zod'
 import AgendaEvent from '../models/AgendaEvent.js'
 import Prospecto from '../models/Prospecto.js'
+import ProductoActivo from '../models/ProductoActivo.js'
 import { isConnected } from '../lib/db.js'
 
 const router = Router()
 
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+
+const PRODUCTO_LABELS = {
+  pfae: 'PFAE',
+  derivados: 'Derivados',
+  tN: 'T+N',
+  inversion: 'Inversión',
+  captacion: 'Captación',
+  pyme: 'Pyme',
+  corporativoFiduciario: 'Corporativo',
+}
 
 /** Eventos del día a las 10:00 por cada prospecto con fechaSeguimiento ese día (Prospección). */
 function buildProspectFollowUpEvents(y, m, d) {
@@ -18,6 +29,49 @@ function buildProspectFollowUpEvents(y, m, d) {
     details: 'Seguimiento (Prospección) — comunicarse con la empresa',
     isProspectFollowUp: true,
   })
+}
+
+/** Solo considera valor como fecha si es Date o string YYYY-MM-DD (no "pendiente" ni "sí"). */
+function isDateValue(d) {
+  if (!d) return false
+  if (d instanceof Date) return !Number.isNaN(d.getTime())
+  const s = String(d).trim()
+  return /^\d{4}-\d{2}-\d{2}$/.test(s)
+}
+
+/** Formato corto de fecha para detalles VMTO (dd/mm/aa). */
+function formatVmtoDate(date) {
+  const d = String(date.getDate()).padStart(2, '0')
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const y = String(date.getFullYear()).slice(-2)
+  return `${d}/${m}/${y}`
+}
+
+/** Eventos VMTO: por cada ProductoActivo, cada fecha de vencimiento en el rango. Incluye nombre, producto y fecha. */
+function buildVmtoEvents(productos, start, end) {
+  const events = []
+  for (const doc of productos) {
+    const name = doc.name || 'Cliente'
+    for (const [key, label] of Object.entries(PRODUCTO_LABELS)) {
+      const d = doc[key]
+      if (!isDateValue(d)) continue
+      const date = new Date(d)
+      if (Number.isNaN(date.getTime()) || date < start || date > end) continue
+      const dateTime = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 9, 0, 0, 0)
+      const fechaStr = formatVmtoDate(date)
+      events.push({
+        id: `vmto-${doc._id}-${key}`,
+        dateTime,
+        title: `${name} — ${label}`,
+        details: `Vencimiento (${label}) · ${fechaStr}`,
+        eventType: 'VMTO',
+        vmtoNombre: name,
+        vmtoProducto: label,
+        vmtoFecha: fechaStr,
+      })
+    }
+  }
+  return events
 }
 
 /**
@@ -36,9 +90,10 @@ router.get('/', async (req, res, next) => {
       const [y, m, d] = String(date).split('-').map(Number)
       const start = new Date(y, m - 1, d, 0, 0, 0, 0)
       const end = new Date(y, m - 1, d, 23, 59, 59, 999)
-      const [agendaDocs, prospectos] = await Promise.all([
+      const [agendaDocs, prospectos, productos] = await Promise.all([
         AgendaEvent.find({ dateTime: { $gte: start, $lte: end } }).sort({ dateTime: 1 }).lean(),
         Prospecto.find({ promotorId: null, fechaSeguimiento: { $gte: start, $lte: end } }).lean(),
+        ProductoActivo.find({}).lean(),
       ])
       const agendaEvents = agendaDocs.map((e) => ({
         id: e._id,
@@ -48,7 +103,8 @@ router.get('/', async (req, res, next) => {
         eventType: e.eventType || 'ANA',
       }))
       const followUpEvents = prospectos.map(buildProspectFollowUpEvents(y, m, d))
-      const all = [...agendaEvents, ...followUpEvents].sort(
+      const vmtoEvents = buildVmtoEvents(productos, start, end)
+      const all = [...agendaEvents, ...followUpEvents, ...vmtoEvents].sort(
         (a, b) => new Date(a.dateTime) - new Date(b.dateTime)
       )
       return res.json(all)
@@ -59,9 +115,10 @@ router.get('/', async (req, res, next) => {
       const [y2, m2, d2] = String(to).split('-').map(Number)
       const start = new Date(y1, m1 - 1, d1, 0, 0, 0, 0)
       const end = new Date(y2, m2 - 1, d2, 23, 59, 59, 999)
-      const [agendaDocs, prospectos] = await Promise.all([
+      const [agendaDocs, prospectos, productos] = await Promise.all([
         AgendaEvent.find({ dateTime: { $gte: start, $lte: end } }).sort({ dateTime: 1 }).lean(),
         Prospecto.find({ promotorId: null, fechaSeguimiento: { $gte: start, $lte: end } }).lean(),
+        ProductoActivo.find({}).lean(),
       ])
       const agendaEvents = agendaDocs.map((e) => ({
         id: e._id,
@@ -81,7 +138,8 @@ router.get('/', async (req, res, next) => {
           isProspectFollowUp: true,
         }
       })
-      const all = [...agendaEvents, ...followUpEvents].sort(
+      const vmtoEvents = buildVmtoEvents(productos, start, end)
+      const all = [...agendaEvents, ...followUpEvents, ...vmtoEvents].sort(
         (a, b) => new Date(a.dateTime) - new Date(b.dateTime)
       )
       return res.json(all)

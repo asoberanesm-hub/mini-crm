@@ -42,9 +42,17 @@ function formatTime(d) {
 
 /** Clases del badge por tipo (mismo color que la leyenda). */
 function eventTypeBadgeClass(e) {
-  if (e.isProspectFollowUp) return 'bg-amber-100 text-amber-800 border border-amber-200'
+  if (e.isProspectFollowUp) return 'bg-violet-100 text-violet-800 border border-violet-200'
+  if (e.eventType === 'VMTO') return 'bg-orange-100 text-orange-800 border border-orange-200'
   if (e.eventType === 'MONEX') return 'bg-sky-100 text-sky-800 border border-sky-200'
   return 'bg-teal-100 text-teal-800 border border-teal-200'
+}
+
+function eventTypeLabel(e) {
+  if (e.isProspectFollowUp) return 'PROSP'
+  if (e.eventType === 'VMTO') return 'VMTO'
+  if (e.eventType === 'MONEX') return 'MONEX'
+  return 'ANA'
 }
 
 export default function Agenda() {
@@ -127,10 +135,10 @@ export default function Agenda() {
       .sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime))
   }, [rawEvents, nowTime])
 
-  /** Panel vertical: solo MONEX y PROSP (máx 6). */
+  /** Panel vertical: MONEX, PROSP y VMTO (máx 6). */
   const proximosPanel = useMemo(() => {
     return proximosAll
-      .filter((e) => e.isProspectFollowUp || e.eventType === 'MONEX')
+      .filter((e) => e.isProspectFollowUp || e.eventType === 'MONEX' || e.eventType === 'VMTO')
       .slice(0, 6)
   }, [proximosAll])
 
@@ -172,7 +180,7 @@ export default function Agenda() {
 
   const handleSelectEvent = (event) => {
     setSelectedEvent(event)
-    if (event.isProspectFollowUp) {
+    if (event.isProspectFollowUp || event.eventType === 'VMTO') {
       setEditingEvent(null)
     } else {
       setEditingEvent({ ...event, dateTime: event.start, eventType: event.eventType || 'ANA' })
@@ -181,12 +189,13 @@ export default function Agenda() {
 
   const eventPropGetter = (event) => {
     if (event.isProspectFollowUp) return { className: 'rbc-event-seguimiento' }
+    if (event.eventType === 'VMTO') return { className: 'rbc-event-vmto' }
     if (event.eventType === 'MONEX') return { className: 'rbc-event-monex' }
     return { className: 'rbc-event-ana' }
   }
 
   const EventComponent = ({ event }) => {
-    const label = event.isProspectFollowUp ? 'PROSP' : (event.eventType === 'MONEX' ? 'MONEX' : 'ANA')
+    const label = eventTypeLabel(event)
     const title = event.title || ''
     return (
       <span className="block truncate" title={title}>
@@ -233,11 +242,19 @@ export default function Agenda() {
                             {formatDateShort(e.dateTime)} · {formatTime(e.dateTime)}
                           </div>
                           <span className={`text-xs font-semibold mt-1 inline-block px-1.5 py-0.5 rounded border ${eventTypeBadgeClass(e)}`}>
-                            {e.isProspectFollowUp ? 'PROSP' : (e.eventType === 'MONEX' ? 'MONEX' : 'ANA')}
+                            {eventTypeLabel(e)}
                           </span>
                         </div>
                         <div className="shrink-0 flex items-center gap-0.5">
-                          {e.isProspectFollowUp ? (
+                          {e.eventType === 'VMTO' ? (
+                            <Link
+                              to="/ana/productos-activos"
+                              className="px-2 py-1 text-xs font-medium text-sky-600 hover:text-sky-700 hover:underline"
+                              onClick={(ev) => ev.stopPropagation()}
+                            >
+                              Ver
+                            </Link>
+                          ) : e.isProspectFollowUp ? (
                             <Link
                               to="/ana/prospeccion"
                               state={{ editProspectId: String(e.id).replace(/^prospect-/, '') }}
@@ -275,10 +292,10 @@ export default function Agenda() {
               </section>
 
               <section>
-                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Próximos (MONEX y PROSP)</h3>
+                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Próximos (MONEX, PROSP, VMTO)</h3>
                 <div className="space-y-1.5 max-h-56 overflow-y-auto">
                   {proximosPanel.length === 0 ? (
-                    <p className="text-sm text-slate-400 py-2">No hay próximos MONEX o PROSP</p>
+                    <p className="text-sm text-slate-400 py-2">No hay próximos MONEX, PROSP o VMTO</p>
                   ) : (
                     proximosPanel.map((e) => (
                       <div
@@ -292,11 +309,18 @@ export default function Agenda() {
                             {formatDateShort(e.dateTime)} · {formatTime(e.dateTime)}
                           </div>
                           <span className={`text-xs font-semibold mt-1 inline-block px-1.5 py-0.5 rounded border ${eventTypeBadgeClass(e)}`}>
-                            {e.isProspectFollowUp ? 'PROSP' : (e.eventType === 'MONEX' ? 'MONEX' : 'ANA')}
+                            {eventTypeLabel(e)}
                           </span>
                         </div>
                         <div className="shrink-0 flex items-center gap-0.5" onClick={(ev) => ev.stopPropagation()}>
-                          {e.isProspectFollowUp ? (
+                          {e.eventType === 'VMTO' ? (
+                            <Link
+                              to="/ana/productos-activos"
+                              className="px-2 py-1 text-xs font-medium text-sky-600 hover:text-sky-700 hover:underline"
+                            >
+                              Ver
+                            </Link>
+                          ) : e.isProspectFollowUp ? (
                             <Link
                               to="/ana/prospeccion"
                               state={{ editProspectId: String(e.id).replace(/^prospect-/, '') }}
@@ -476,7 +500,7 @@ export default function Agenda() {
             )}
 
             {selectedEvent && editingEvent === null && selectedEvent.isProspectFollowUp && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+              <div className="bg-violet-50 border border-violet-200 rounded-lg p-4 mb-4">
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="font-semibold text-slate-800">{selectedEvent.title}</h3>
@@ -484,7 +508,7 @@ export default function Agenda() {
                     <p className="text-xs text-slate-500 mt-2">
                       {formatDateShort(selectedEvent.start)} · {formatTime(selectedEvent.start)}
                     </p>
-                    <span className="inline-block mt-2 text-xs font-semibold text-amber-800 bg-amber-100 px-2 py-1 rounded">PROSP — desde Prospección</span>
+                    <span className="inline-block mt-2 text-xs font-semibold text-violet-800 bg-violet-100 px-2 py-1 rounded">PROSP — desde Prospección</span>
                     <div className="mt-3">
                       <Link
                         to="/ana/prospeccion"
@@ -492,6 +516,46 @@ export default function Agenda() {
                         className="inline-block px-3 py-1.5 text-sm font-medium text-sky-600 bg-sky-100 rounded-lg hover:bg-sky-200"
                       >
                         Editar en Prospección
+                      </Link>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedEvent(null)}
+                    className="text-slate-400 hover:text-slate-600"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {selectedEvent && editingEvent === null && selectedEvent.eventType === 'VMTO' && (
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-semibold text-slate-800">Vencimiento (VMTO)</h3>
+                    <dl className="mt-2 space-y-1 text-sm">
+                      <div>
+                        <dt className="text-slate-500 inline">Nombre: </dt>
+                        <dd className="inline font-medium text-slate-800">{selectedEvent.vmtoNombre ?? (selectedEvent.title?.split(' — ')[0] ?? '—')}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-slate-500 inline">Producto: </dt>
+                        <dd className="inline font-medium text-slate-800">{selectedEvent.vmtoProducto ?? (selectedEvent.title?.split(' — ')[1] ?? '—')}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-slate-500 inline">Fecha: </dt>
+                        <dd className="inline font-medium text-slate-800">{selectedEvent.vmtoFecha ?? formatDateShort(selectedEvent.start)}</dd>
+                      </div>
+                    </dl>
+                    <span className="inline-block mt-2 text-xs font-semibold text-orange-800 bg-orange-100 px-2 py-1 rounded">VMTO — desde Productos Activos</span>
+                    <div className="mt-3">
+                      <Link
+                        to="/ana/productos-activos"
+                        className="inline-block px-3 py-1.5 text-sm font-medium text-sky-600 bg-sky-100 rounded-lg hover:bg-sky-200"
+                      >
+                        Ver en Productos Activos
                       </Link>
                     </div>
                   </div>
@@ -537,8 +601,12 @@ export default function Agenda() {
             <div className="flex flex-wrap items-center gap-4 mt-3 pt-3 border-t border-slate-200 text-sm text-slate-600">
               <span className="font-medium text-slate-500">Leyenda:</span>
               <span className="inline-flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded bg-[#d97706] border border-[#b45309]" />
+                <span className="w-3 h-3 rounded bg-[#7c3aed] border border-[#6d28d9]" />
                 PROSP (Prospección)
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded bg-[#ea580c] border border-[#c2410c]" />
+                VMTO (Vencimiento)
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded bg-[#0369a1] border border-[#0284c7]" />
@@ -572,7 +640,7 @@ export default function Agenda() {
                       <div className="font-medium text-slate-800 mt-1.5 truncate" title={e.title}>{e.title}</div>
                       <div className="text-xs text-slate-500 mt-0.5 truncate" title={e.details}>{e.details || '-'}</div>
                       <span className={`inline-block mt-1.5 text-xs font-semibold px-1.5 py-0.5 rounded border ${eventTypeBadgeClass(e)}`}>
-                        {e.isProspectFollowUp ? 'PROSP' : (e.eventType === 'MONEX' ? 'MONEX' : 'ANA')}
+                        {eventTypeLabel(e)}
                       </span>
                     </div>
                   ))}
