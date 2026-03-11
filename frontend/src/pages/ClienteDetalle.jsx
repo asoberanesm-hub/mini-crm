@@ -1,10 +1,13 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useParams, Link } from 'react-router-dom'
 import { fetchApi } from '../lib/api'
 import ErrorApi from '../components/ErrorApi'
+import CrearSeguimientoModal from '../components/CrearSeguimientoModal'
 
 export default function ClienteDetalle() {
   const { id } = useParams()
+  const [showSeguimientoModal, setShowSeguimientoModal] = useState(false)
   const clienteQ = useQuery({
     queryKey: ['clientes', id],
     queryFn: () => fetchApi(`/clientes/${id}`),
@@ -31,8 +34,21 @@ export default function ClienteDetalle() {
 
   return (
     <div className="p-6">
-      <div className="mb-6">
+      <CrearSeguimientoModal
+        open={showSeguimientoModal}
+        onClose={() => setShowSeguimientoModal(false)}
+        tipo="cliente"
+        entity={{ id: cliente._id, name: cliente.name }}
+      />
+      <div className="mb-6 flex items-center justify-between gap-4">
         <Link to="/clientes" className="text-slate-500 hover:text-slate-700">← Clientes</Link>
+        <button
+          type="button"
+          onClick={() => setShowSeguimientoModal(true)}
+          className="px-4 py-2 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-700"
+        >
+          Crear seguimiento
+        </button>
       </div>
       <h1 className="text-2xl font-semibold text-slate-800 mb-6">{cliente.name}</h1>
 

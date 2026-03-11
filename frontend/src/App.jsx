@@ -6,10 +6,13 @@ import Dashboard from './pages/Dashboard'
 import ClientesActivos from './pages/ana/ClientesActivos'
 import ProductosActivos from './pages/ana/ProductosActivos'
 import ProspeccionAna from './pages/ana/Prospeccion'
+import CursosAna from './pages/ana/Cursos'
 import ClientesNuevos from './pages/promotores/ClientesNuevos'
 import ProspectosPromotores from './pages/promotores/Prospectos'
 import ProductosPromotores from './pages/promotores/Productos'
 import Agenda from './pages/Agenda'
+import Clientes from './pages/Clientes'
+import ClienteDetalle from './pages/ClienteDetalle'
 
 export default function App() {
   return (
@@ -29,10 +32,13 @@ export default function App() {
         <Route path="ana/clientes-activos" element={<ClientesActivos />} />
         <Route path="ana/productos-activos" element={<ProductosActivos />} />
         <Route path="ana/prospeccion" element={<ProspeccionAna />} />
+        <Route path="ana/cursos" element={<CursosAna />} />
         <Route path="promotores/clientes-nuevos" element={<ClientesNuevos />} />
         <Route path="promotores/prospectos" element={<ProspectosPromotores />} />
         <Route path="promotores/productos" element={<ProductosPromotores />} />
         <Route path="agenda" element={<Agenda />} />
+        <Route path="clientes" element={<Clientes />} />
+        <Route path="clientes/:id" element={<ClienteDetalle />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

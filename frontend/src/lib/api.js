@@ -1,5 +1,10 @@
 const BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
 
+// En producción, en consola (F12) verás qué API usa la app; si sale vacío, VITE_API_URL no se aplicó en el build
+if (typeof window !== 'undefined') {
+  console.log('[Aysa] API:', BASE || '(no configurada — peticiones irán al mismo origen)')
+}
+
 // En producción (Render) el backend puede estar "dormido"; darle hasta 90s y reintentar
 const isProd = typeof window !== 'undefined' && !/localhost|127\.0\.0\.1/.test(window.location.hostname)
 const REQUEST_TIMEOUT_MS = isProd ? 90000 : 15000
@@ -19,6 +24,10 @@ function fetchWithTimeout(url, opts, timeoutMs) {
   const ctrl = new AbortController()
   const id = setTimeout(() => ctrl.abort(), timeoutMs)
   return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(id))
+}
+
+export function buildApiUrl(path) {
+  return buildUrl(path)
 }
 
 async function doOneRequest(url, opts) {

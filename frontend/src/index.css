@@ -2,61 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
-/* React Big Calendar - ajustes para CRM */
-
-/* Eventos MONEX (evento MONEX) */
-.rbc-event.rbc-event-monex {
-  background: #0369a1;
-  border-color: #0284c7;
-  color: #fff;
-}
-.rbc-event.rbc-event-monex:hover {
-  background: #0284c7;
-  color: #fff;
-}
-
-/* Eventos ANA (evento personal) */
-.rbc-event.rbc-event-ana {
-  background: #0d9488;
-  border-color: #0f766e;
-  color: #fff;
-}
-.rbc-event.rbc-event-ana:hover {
-  background: #0f766e;
-  color: #fff;
-}
-
-/* Eventos de Prospección (fecha de seguimiento) — morado */
-.rbc-event.rbc-event-seguimiento {
-  background: #7c3aed;
-  border-color: #6d28d9;
-  color: #fff;
-}
-.rbc-event.rbc-event-seguimiento:hover {
-  background: #6d28d9;
-  color: #fff;
-}
-
-/* Eventos VMTO (vencimiento — Productos Activos) — naranja */
-.rbc-event.rbc-event-vmto {
-  background: #ea580c;
-  border-color: #c2410c;
-  color: #fff;
-}
-.rbc-event.rbc-event-vmto:hover {
-  background: #c2410c;
-  color: #fff;
-}
-
+/* React Big Calendar - ajustes para CRM. Colores por tipo vía inline (AGENDA_PALETTE). */
 .rbc-calendar { font-family: inherit; }
 .rbc-header { padding: 10px 4px; font-weight: 600; font-size: 0.75rem; }
 .rbc-month-view { border-radius: 8px; overflow: hidden; }
 .rbc-day-bg + .rbc-day-bg { border-left: 1px solid #e2e8f0; }
-.rbc-event { padding: 2px 6px; font-size: 0.75rem; border-radius: 4px; border-left-width: 3px; }
-.rbc-today { background-color: #f0f9ff; }
+.rbc-event { padding: 4px 8px; font-size: 0.75rem; border-radius: 4px; border-left-width: 4px; border-left-style: solid; }
+.rbc-event:hover { filter: brightness(0.97); }
+.rbc-today { background-color: #F3F4F6; }
 .rbc-off-range-bg { background: #f8fafc; }
 .rbc-toolbar { margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
 .rbc-toolbar button { padding: 0.4rem 0.75rem; border-radius: 6px; font-size: 0.875rem; }
-.rbc-toolbar button.rbc-active { background: #0369a1; color: white; border-color: #0369a1; }
-.rbc-toolbar button:hover { background: #e2e8f0; }
-.rbc-toolbar button.rbc-active:hover { background: #0284c7; color: white; }
+.rbc-toolbar button.rbc-active { background: #44749D; color: white; border-color: #44749D; }
+.rbc-toolbar button:hover { background: #E5E7EB; }
+.rbc-toolbar button.rbc-active:hover { background: #44749D; color: white; }

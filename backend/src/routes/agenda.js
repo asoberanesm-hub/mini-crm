@@ -1,8 +1,10 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import AgendaEvent from '../models/AgendaEvent.js'
+import Activity from '../models/Activity.js'
 import Prospecto from '../models/Prospecto.js'
 import ProductoActivo from '../models/ProductoActivo.js'
+import CursoAna from '../models/CursoAna.js'
 import { isConnected } from '../lib/db.js'
 
 const router = Router()
@@ -27,6 +29,7 @@ function buildProspectFollowUpEvents(y, m, d) {
     dateTime,
     title: prospect.name || 'Prospecto',
     details: 'Seguimiento (Prospección) — comunicarse con la empresa',
+    eventType: 'PROSP',
     isProspectFollowUp: true,
   })
 }
@@ -74,6 +77,64 @@ function buildVmtoEvents(productos, start, end) {
   return events
 }
 
+/** Eventos de cursos ANA: por cada CursoAna con fechaLimite en rango. */
+function buildCursoEvents(cursos, start, end) {
+  const events = []
+  for (const c of cursos) {
+    if (!c.fechaLimite) continue
+    const date = new Date(c.fechaLimite)
+    if (Number.isNaN(date.getTime()) || date < start || date > end) continue
+    const dateTime = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 9, 0, 0, 0)
+    events.push({
+      id: `curso-${c._id}`,
+      dateTime,
+      title: c.nombreCurso || 'Curso',
+      details: c.tipoCurso ? `Curso · ${c.tipoCurso}` : 'Curso',
+      eventType: 'CURSO',
+      cursoId: c._id,
+    })
+  }
+  return events
+}
+
+/**
+ * GET /api/v1/agenda/kpis?date=YYYY-MM-DD
+ * KPIs del día: seguimientos hoy, prospectos activos, vencimientos hoy, eventos hoy.
+ */
+router.get('/kpis', async (req, res, next) => {
+  try {
+    if (!isConnected()) {
+      return res.json({ seguimientosHoy: 0, prospectosActivos: 0, vencimientosHoy: 0, eventosHoy: 0 })
+    }
+    const today = new Date()
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    const dateStr = req.query.date && dateRegex.test(String(req.query.date)) ? String(req.query.date) : todayStr
+    const [y, m, d] = dateStr.split('-').map(Number)
+    const start = new Date(y, m - 1, d, 0, 0, 0, 0)
+    const end = new Date(y, m - 1, d, 23, 59, 59, 999)
+
+    const [seguimientosHoy, prospectosActivos, productos, agendaDocs] = await Promise.all([
+      Prospecto.countDocuments({ promotorId: null, fechaSeguimiento: { $gte: start, $lte: end } }),
+      Prospecto.countDocuments({ promotorId: null, stage: { $ne: 'perdido' } }),
+      ProductoActivo.find({}).lean(),
+      AgendaEvent.find({ dateTime: { $gte: start, $lte: end } }).lean(),
+    ])
+
+    const vmtoHoy = buildVmtoEvents(productos, start, end)
+    const vencimientosHoy = vmtoHoy.length
+    const eventosHoy = agendaDocs.length + seguimientosHoy + vencimientosHoy
+
+    return res.json({
+      seguimientosHoy,
+      prospectosActivos,
+      vencimientosHoy,
+      eventosHoy,
+    })
+  } catch (e) {
+    next(e)
+  }
+})
+
 /**
  * GET /api/v1/agenda?date=YYYY-MM-DD
  * Devuelve eventos del día (agenda + seguimientos de prospectos a las 10:00).
@@ -90,10 +151,11 @@ router.get('/', async (req, res, next) => {
       const [y, m, d] = String(date).split('-').map(Number)
       const start = new Date(y, m - 1, d, 0, 0, 0, 0)
       const end = new Date(y, m - 1, d, 23, 59, 59, 999)
-      const [agendaDocs, prospectos, productos] = await Promise.all([
+      const [agendaDocs, prospectos, productos, cursos] = await Promise.all([
         AgendaEvent.find({ dateTime: { $gte: start, $lte: end } }).sort({ dateTime: 1 }).lean(),
         Prospecto.find({ promotorId: null, fechaSeguimiento: { $gte: start, $lte: end } }).lean(),
         ProductoActivo.find({}).lean(),
+        CursoAna.find({ fechaLimite: { $gte: start, $lte: end } }).lean(),
       ])
       const agendaEvents = agendaDocs.map((e) => ({
         id: e._id,
@@ -101,10 +163,15 @@ router.get('/', async (req, res, next) => {
         title: e.title,
         details: e.details || '',
         eventType: e.eventType || 'ANA',
+        realizado: !!e.realizado,
+        nota: e.nota || '',
+        clienteId: e.clienteId || null,
+        prospectoId: e.prospectoId || null,
       }))
       const followUpEvents = prospectos.map(buildProspectFollowUpEvents(y, m, d))
       const vmtoEvents = buildVmtoEvents(productos, start, end)
-      const all = [...agendaEvents, ...followUpEvents, ...vmtoEvents].sort(
+      const cursoEvents = buildCursoEvents(cursos, start, end)
+      const all = [...agendaEvents, ...followUpEvents, ...vmtoEvents, ...cursoEvents].sort(
         (a, b) => new Date(a.dateTime) - new Date(b.dateTime)
       )
       return res.json(all)
@@ -115,10 +182,11 @@ router.get('/', async (req, res, next) => {
       const [y2, m2, d2] = String(to).split('-').map(Number)
       const start = new Date(y1, m1 - 1, d1, 0, 0, 0, 0)
       const end = new Date(y2, m2 - 1, d2, 23, 59, 59, 999)
-      const [agendaDocs, prospectos, productos] = await Promise.all([
+      const [agendaDocs, prospectos, productos, cursos] = await Promise.all([
         AgendaEvent.find({ dateTime: { $gte: start, $lte: end } }).sort({ dateTime: 1 }).lean(),
         Prospecto.find({ promotorId: null, fechaSeguimiento: { $gte: start, $lte: end } }).lean(),
         ProductoActivo.find({}).lean(),
+        CursoAna.find({ fechaLimite: { $gte: start, $lte: end } }).lean(),
       ])
       const agendaEvents = agendaDocs.map((e) => ({
         id: e._id,
@@ -126,6 +194,10 @@ router.get('/', async (req, res, next) => {
         title: e.title,
         details: e.details || '',
         eventType: e.eventType || 'ANA',
+        realizado: !!e.realizado,
+        nota: e.nota || '',
+        clienteId: e.clienteId || null,
+        prospectoId: e.prospectoId || null,
       }))
       const followUpEvents = prospectos.map((p) => {
         const d = new Date(p.fechaSeguimiento)
@@ -134,12 +206,14 @@ router.get('/', async (req, res, next) => {
           id: `prospect-${p._id}`,
           dateTime,
           title: p.name || 'Prospecto',
-          details: 'Fecha de seguimiento',
+          details: 'Seguimiento (Prospección)',
+          eventType: 'PROSP',
           isProspectFollowUp: true,
         }
       })
       const vmtoEvents = buildVmtoEvents(productos, start, end)
-      const all = [...agendaEvents, ...followUpEvents, ...vmtoEvents].sort(
+      const cursoEvents = buildCursoEvents(cursos, start, end)
+      const all = [...agendaEvents, ...followUpEvents, ...vmtoEvents, ...cursoEvents].sort(
         (a, b) => new Date(a.dateTime) - new Date(b.dateTime)
       )
       return res.json(all)
@@ -151,16 +225,42 @@ router.get('/', async (req, res, next) => {
   }
 })
 
-const eventTypeEnum = z.enum(['MONEX', 'ANA'])
+/**
+ * GET /api/v1/agenda/activity?limit=20
+ * Actividad reciente (eventos marcados como realizados, etc.).
+ */
+router.get('/activity', async (req, res, next) => {
+  try {
+    if (!isConnected()) return res.json([])
+    const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100)
+    const docs = await Activity.find({}).sort({ createdAt: -1 }).limit(limit).lean()
+    const items = docs.map((d) => ({
+      id: d._id,
+      type: d.type,
+      payload: d.payload || {},
+      createdAt: d.createdAt,
+    }))
+    return res.json(items)
+  } catch (e) {
+    next(e)
+  }
+})
+
+const eventTypeEnum = z.enum(['MONEX', 'ANA', 'PROSP'])
 const postSchema = z.object({
   dateTime: z.string().min(1),
   title: z.string().min(1),
   details: z.string().optional().default(''),
   eventType: eventTypeEnum.optional().default('ANA'),
+  clienteId: z.string().optional(),
+  prospectoId: z.string().optional(),
 }).transform((data) => {
   const d = new Date(data.dateTime)
   if (Number.isNaN(d.getTime())) throw new Error('dateTime inválido')
-  return { dateTime: d, title: data.title.trim(), details: (data.details || '').trim(), eventType: data.eventType || 'ANA' }
+  const out = { dateTime: d, title: data.title.trim(), details: (data.details || '').trim(), eventType: data.eventType || 'ANA' }
+  if (data.clienteId) out.clienteId = data.clienteId
+  if (data.prospectoId) out.prospectoId = data.prospectoId
+  return out
 })
 
 router.post('/', async (req, res, next) => {
@@ -172,6 +272,8 @@ router.post('/', async (req, res, next) => {
       title: data.title,
       details: data.details || '',
       eventType: data.eventType || 'ANA',
+      clienteId: data.clienteId || undefined,
+      prospectoId: data.prospectoId || undefined,
     })
     res.status(201).json({
       id: doc._id,
@@ -179,6 +281,8 @@ router.post('/', async (req, res, next) => {
       title: doc.title,
       details: doc.details || '',
       eventType: doc.eventType || 'ANA',
+      clienteId: doc.clienteId || null,
+      prospectoId: doc.prospectoId || null,
     })
   } catch (e) {
     if (e.name === 'ZodError') {
@@ -195,6 +299,8 @@ const putSchema = z.object({
   title: z.string().min(1).optional(),
   details: z.string().optional(),
   eventType: eventTypeEnum.optional(),
+  realizado: z.boolean().optional(),
+  nota: z.string().optional(),
 }).transform((data) => {
   const out = {}
   if (data.dateTime !== undefined) {
@@ -205,6 +311,8 @@ const putSchema = z.object({
   if (data.title !== undefined) out.title = data.title.trim()
   if (data.details !== undefined) out.details = data.details.trim()
   if (data.eventType !== undefined) out.eventType = data.eventType
+  if (data.realizado !== undefined) out.realizado = data.realizado
+  if (data.nota !== undefined) out.nota = (data.nota || '').trim()
   return out
 })
 
@@ -214,12 +322,27 @@ router.put('/:id', async (req, res, next) => {
     const data = putSchema.parse(req.body)
     const doc = await AgendaEvent.findByIdAndUpdate(req.params.id, data, { new: true }).lean()
     if (!doc) return res.status(404).json({ error: 'Evento no encontrado' })
+    if (data.realizado === true) {
+      const payload = {
+        eventId: String(doc._id),
+        title: doc.title,
+        dateTime: doc.dateTime,
+        note: doc.nota || '',
+      }
+      if (doc.clienteId) payload.clienteId = String(doc.clienteId)
+      if (doc.prospectoId) payload.prospectoId = String(doc.prospectoId)
+      await Activity.create({ type: 'evento_realizado', payload })
+    }
     res.json({
       id: doc._id,
       dateTime: doc.dateTime,
       title: doc.title,
       details: doc.details || '',
       eventType: doc.eventType || 'ANA',
+      realizado: !!doc.realizado,
+      nota: doc.nota || '',
+      clienteId: doc.clienteId || null,
+      prospectoId: doc.prospectoId || null,
     })
   } catch (e) {
     if (e.name === 'ZodError') {

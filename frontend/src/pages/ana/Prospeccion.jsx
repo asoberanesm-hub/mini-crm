@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { fetchApi, postApi, putApi, deleteApi } from '../../lib/api'
 import ErrorApi from '../../components/ErrorApi'
 import LoadingModule from '../../components/LoadingModule'
+import CrearSeguimientoModal from '../../components/CrearSeguimientoModal'
 
 function fmt(d) {
   return d ? new Date(d).toLocaleDateString('es-MX') : '-'
@@ -46,6 +47,8 @@ export default function Prospeccion() {
   const [comentarioFase3, setComentarioFase3] = useState('')
   const [horaSeguimiento, setHoraSeguimiento] = useState('')
   const [editingRow, setEditingRow] = useState(null)
+  const [sortBy, setSortBy] = useState('fechaSeguimiento') // 'fechaSeguimiento' | 'nombre'
+  const [seguimientoModal, setSeguimientoModal] = useState(null)
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['ana', 'prospeccion'],
@@ -57,6 +60,7 @@ export default function Prospeccion() {
     mutationFn: (payload) => postApi('/prospectos', payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ana', 'prospeccion'] })
+      queryClient.invalidateQueries({ queryKey: ['agenda'] })
       resetAddForm()
     },
   })
@@ -65,6 +69,7 @@ export default function Prospeccion() {
     mutationFn: ({ id, payload }) => putApi(`/prospectos/${id}`, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ana', 'prospeccion'] })
+      queryClient.invalidateQueries({ queryKey: ['agenda'] })
       setEditingRow(null)
     },
   })
@@ -73,6 +78,7 @@ export default function Prospeccion() {
     mutationFn: (id) => deleteApi(`/prospectos/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ana', 'prospeccion'] })
+      queryClient.invalidateQueries({ queryKey: ['agenda'] })
       if (editingRow) setEditingRow(null)
     },
   })
@@ -150,6 +156,20 @@ export default function Prospeccion() {
   }
 
   const list = Array.isArray(data) ? data : []
+
+  const sortedList = useMemo(() => {
+    const arr = [...list]
+    if (sortBy === 'nombre') {
+      return arr.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    }
+    // sortBy fechaSeguimiento (asc), luego nombre
+    return arr.sort((a, b) => {
+      const da = a.fechaSeguimiento ? new Date(a.fechaSeguimiento).getTime() : 0
+      const db = b.fechaSeguimiento ? new Date(b.fechaSeguimiento).getTime() : 0
+      if (da !== db) return da - db
+      return (a.name || '').localeCompare(b.name || '')
+    })
+  }, [list, sortBy])
   const openedEditIdRef = useRef(null)
 
   useEffect(() => {
@@ -172,6 +192,12 @@ export default function Prospeccion() {
   if (error) return <ErrorApi error={error} />
   return (
     <div className="p-6">
+      <CrearSeguimientoModal
+        open={!!seguimientoModal}
+        onClose={() => setSeguimientoModal(null)}
+        tipo="prospecto"
+        entity={seguimientoModal ? { id: seguimientoModal._id, name: seguimientoModal.name } : null}
+      />
       <h1 className="text-2xl font-semibold text-slate-800 mb-2">Prospección</h1>
       <p className="text-slate-600 text-sm mb-4">Módulo ANA SOBERANES — contacto, fases y seguimiento.</p>
 
@@ -229,9 +255,22 @@ export default function Prospeccion() {
         </form>
       )}
 
-      <p className="text-slate-500 text-sm mb-2">
-        Para editar un registro ya agregado, haz clic en <strong>EDITAR</strong> en la fila; se habilitarán los campos arriba para modificar y guardar. Puedes <strong>Eliminar</strong> cualquier prospecto desde el botón en cada fila.
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+        <p className="text-slate-500 text-sm">
+          Para editar un registro ya agregado, haz clic en <strong>EDITAR</strong> en la fila; se habilitarán los campos arriba para modificar y guardar. Puedes <strong>Eliminar</strong> cualquier prospecto desde el botón en cada fila.
+        </p>
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-slate-500">Ordenar por:</span>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="px-2 py-1 border border-slate-300 rounded text-xs bg-white"
+          >
+            <option value="fechaSeguimiento">Fecha seguimiento</option>
+            <option value="nombre">Nombre</option>
+          </select>
+        </div>
+      </div>
       {eliminar.isError && <p className="text-red-600 text-sm mb-2">{eliminar.error?.message}</p>}
       <div className="bg-white rounded-lg shadow overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200">
@@ -253,7 +292,7 @@ export default function Prospeccion() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200">
-            {list.length ? list.map((row) => (
+            {sortedList.length ? sortedList.map((row) => (
               <tr key={row._id} className="hover:bg-slate-50 text-xs">
                 <td className="px-3 py-2 font-medium whitespace-nowrap">{row.name}</td>
                 <td className="px-3 py-2 text-slate-600">{row.exim ?? '-'}</td>
@@ -268,6 +307,9 @@ export default function Prospeccion() {
                 <td className="px-3 py-2 whitespace-nowrap">{fmt(row.fechaSeguimiento)}</td>
                 <td className="px-3 py-2 whitespace-nowrap">{row.horaSeguimiento ?? '-'}</td>
                 <td className="px-3 py-2 text-right whitespace-nowrap space-x-2">
+                  <button type="button" onClick={() => setSeguimientoModal(row)} className="px-3 py-1.5 text-violet-600 hover:text-violet-800 font-medium text-xs">
+                    Crear seguimiento
+                  </button>
                   <button type="button" onClick={() => startEdit(row)} className="px-3 py-1.5 bg-sky-100 text-sky-700 rounded text-xs font-medium hover:bg-sky-200 border border-sky-200">
                     EDITAR
                   </button>

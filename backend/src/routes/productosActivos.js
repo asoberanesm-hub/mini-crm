@@ -4,7 +4,7 @@ import { isConnected } from '../lib/db.js'
 
 const router = Router()
 
-const PRODUCT_KEYS = ['pfae', 'derivados', 'tN', 'inversion', 'captacion', 'pyme', 'corporativoFiduciario']
+const PRODUCT_KEYS = ['pfae', 'derivados', 'tN', 'inversion', 'captacion', 'pyme', 'intradia', 'corporativoFiduciario']
 
 /** Convierte Date a string YYYY-MM-DD. Evita enviar ISO al frontend. */
 function toDateOnlyString(val) {
@@ -81,7 +81,9 @@ router.post('/', async (req, res, next) => {
       inversion: normalizeProductValue(body.inversion),
       captacion: normalizeProductValue(body.captacion),
       pyme: normalizeProductValue(body.pyme),
+      intradia: normalizeProductValue(body.intradia),
       corporativoFiduciario: normalizeProductValue(body.corporativoFiduciario),
+      notas: typeof body.notas === 'string' ? body.notas.trim() : '',
     }
     if (process.env.NODE_ENV !== 'production') {
       console.log('[productosActivos POST] toCreate.pfae:', toCreate.pfae)
@@ -113,7 +115,9 @@ router.put('/:id', async (req, res, next) => {
     doc.inversion = body.inversion !== undefined && body.inversion !== null ? normalizeProductValue(body.inversion) : normalizeProductValue(doc.inversion)
     doc.captacion = body.captacion !== undefined && body.captacion !== null ? normalizeProductValue(body.captacion) : normalizeProductValue(doc.captacion)
     doc.pyme = body.pyme !== undefined && body.pyme !== null ? normalizeProductValue(body.pyme) : normalizeProductValue(doc.pyme)
+    doc.intradia = body.intradia !== undefined && body.intradia !== null ? normalizeProductValue(body.intradia) : normalizeProductValue(doc.intradia)
     doc.corporativoFiduciario = body.corporativoFiduciario !== undefined && body.corporativoFiduciario !== null ? normalizeProductValue(body.corporativoFiduciario) : normalizeProductValue(doc.corporativoFiduciario)
+    doc.notas = body.notas !== undefined && body.notas !== null ? String(body.notas).trim() : (doc.notas || '')
     await doc.save()
     const out = normalizeDoc(doc.toObject ? doc.toObject() : doc)
     if (process.env.NODE_ENV !== 'production') {

@@ -5,7 +5,7 @@ import ErrorApi from '../../components/ErrorApi'
 import LoadingModule from '../../components/LoadingModule'
 
 // Claves de productos en orden (PFAE primero). Usar en state, payload y tabla.
-const PRODUCT_KEYS = ['pfae', 'derivados', 'tN', 'inversion', 'captacion', 'pyme', 'corporativoFiduciario']
+const PRODUCT_KEYS = ['pfae', 'derivados', 'tN', 'inversion', 'captacion', 'pyme', 'intradia', 'corporativoFiduciario']
 
 // Solo para formularios y payload: orden y metadatos (PFAE primero, luego derivados, etc.)
 const PRODUCTOS = [
@@ -15,6 +15,7 @@ const PRODUCTOS = [
   { key: 'inversion', label: 'INVERSION', color: 'bg-yellow-100 text-yellow-900' },
   { key: 'captacion', label: 'CAPTACION', color: 'bg-green-100 text-green-900' },
   { key: 'pyme', label: 'PYME', color: 'bg-sky-100 text-sky-900' },
+  { key: 'intradia', label: 'INTRADIA', color: 'bg-[#febeac] text-[#4b1e27]' },
   { key: 'corporativoFiduciario', label: 'CORPORATIVO', color: 'bg-violet-100 text-violet-900' },
 ]
 
@@ -30,6 +31,7 @@ const COLOR_TN = 'bg-orange-100 text-orange-900'
 const COLOR_INVERSION = 'bg-yellow-100 text-yellow-900'
 const COLOR_CAPTACION = 'bg-green-100 text-green-900'
 const COLOR_PYME = 'bg-sky-100 text-sky-900'
+const COLOR_INTRADIA = 'bg-[#febeac] text-[#4b1e27]'
 const COLOR_CORPORATIVO = 'bg-violet-100 text-violet-900'
 
 const TIPO_VACIO = ''
@@ -85,6 +87,7 @@ export default function ProductosActivos() {
   const [nombre, setNombre] = useState('')
   const [valores, setValores] = useState(() => getInitialValores())
   const [editingRow, setEditingRow] = useState(null)
+  const [notas, setNotas] = useState('')
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['ana', 'productos-activos'],
@@ -131,6 +134,7 @@ export default function ProductosActivos() {
   function resetAddForm() {
     setNombre('')
     setValores(getInitialValores())
+    setNotas('')
   }
 
   const handleSubmit = (e) => {
@@ -138,7 +142,7 @@ export default function ProductosActivos() {
     const name = nombre.trim()
     if (!name) return
     const v = (key) => valores[key] ?? { tipo: '', fecha: '' }
-    const payload = { name }
+    const payload = { name, notas: notas.trim() || '' }
     PRODUCT_KEYS.forEach((key) => {
       payload[key] = valorToPayload(v(key).tipo, v(key).fecha)
     })
@@ -152,7 +156,7 @@ export default function ProductosActivos() {
   const handleEditSave = (e) => {
     e.preventDefault()
     if (!editingRow) return
-    const payload = { name: (editingRow.name ?? '').trim() }
+    const payload = { name: (editingRow.name ?? '').trim(), notas: (editingRow.notas ?? '').trim() }
     PRODUCT_KEYS.forEach((key) => {
       payload[key] = valorToPayload(editingRow[`${key}_tipo`] ?? '', editingRow[`${key}_fecha`] ?? '')
     })
@@ -225,6 +229,17 @@ export default function ProductosActivos() {
           className="px-3 py-2 border border-slate-300 rounded-lg text-sm min-w-[160px]"
           required
         />
+        <div className="flex-1 min-w-[200px]">
+          <label className="block text-xs font-medium text-slate-500 mb-1">Notas</label>
+          <input
+            type="text"
+            name="notas"
+            value={notas}
+            onChange={(e) => setNotas(e.target.value)}
+            placeholder="Notas generales del cliente"
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+          />
+        </div>
         {PRODUCTOS.map((p) => {
           const val = valores[p.key] ?? { tipo: '', fecha: '' }
           return (
@@ -283,6 +298,17 @@ export default function ProductosActivos() {
               required
             />
           </div>
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-xs font-medium text-slate-500 mb-1">Notas</label>
+            <input
+              type="text"
+              name="notas_edit"
+              value={editingRow.notas || ''}
+              onChange={(e) => setEditingRow((r) => (r ? { ...r, notas: e.target.value } : null))}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+              placeholder="Notas generales del cliente"
+            />
+          </div>
           {PRODUCTOS.map((p) => (
             <div key={p.key}>
               <label className="block text-xs font-medium text-slate-500 mb-1">{p.label}</label>
@@ -338,7 +364,9 @@ export default function ProductosActivos() {
               <th className="px-3 py-2 text-left text-xs font-medium text-slate-600 uppercase">Inversion</th>
               <th className="px-3 py-2 text-left text-xs font-medium text-slate-600 uppercase">Captacion</th>
               <th className="px-3 py-2 text-left text-xs font-medium text-slate-600 uppercase">Pyme</th>
+              <th className="px-3 py-2 text-left text-xs font-medium text-slate-600 uppercase">Intradia</th>
               <th className="px-3 py-2 text-left text-xs font-medium text-slate-600 uppercase">Corporativo</th>
+              <th className="px-3 py-2 text-left text-xs font-medium text-slate-600 uppercase">Notas</th>
               <th className="px-3 py-2 text-right text-xs font-medium text-slate-600 uppercase">Acción</th>
             </tr>
           </thead>
@@ -354,6 +382,7 @@ export default function ProductosActivos() {
                 const dInversion = cellDisplay(row.inversion, COLOR_INVERSION)
                 const dCaptacion = cellDisplay(row.captacion, COLOR_CAPTACION)
                 const dPyme = cellDisplay(row.pyme, COLOR_PYME)
+                const dIntradia = cellDisplay(row.intradia, COLOR_INTRADIA)
                 const dCorp = cellDisplay(row.corporativoFiduciario, COLOR_CORPORATIVO)
                 const badge = (d) => d.text ? <span className={`inline-block px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap ${d.className}`} title={d.text}>{d.text}</span> : null
                 return (
@@ -365,7 +394,11 @@ export default function ProductosActivos() {
                     <td className="px-2 py-2 align-middle">{badge(dInversion)}</td>
                     <td className="px-2 py-2 align-middle">{badge(dCaptacion)}</td>
                     <td className="px-2 py-2 align-middle">{badge(dPyme)}</td>
+                    <td className="px-2 py-2 align-middle">{badge(dIntradia)}</td>
                     <td className="px-2 py-2 align-middle">{badge(dCorp)}</td>
+                    <td className="px-3 py-2 align-middle text-xs text-slate-600 max-w-[200px] truncate" title={row.notas || ''}>
+                      {row.notas || ''}
+                    </td>
                     <td className="px-3 py-2 text-right whitespace-nowrap space-x-2">
                       <button
                         type="button"
@@ -388,7 +421,7 @@ export default function ProductosActivos() {
               })
             ) : (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={11} className="px-4 py-8 text-center text-slate-500">
                   No hay registros. Agrega uno con el formulario de arriba.
                 </td>
               </tr>

@@ -4,6 +4,8 @@ import cors from 'cors'
 import helmet from 'helmet'
 import morgan from 'morgan'
 import mongoose from 'mongoose'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import errorHandler from './middleware/errorHandler.js'
 
 import promotoresRouter from './routes/promotores.js'
@@ -23,6 +25,7 @@ import productosActivosRouter from './routes/productosActivos.js'
 
 const app = express()
 const PORT = process.env.PORT ?? 3001
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 app.use(helmet())
 const allowedOrigins = [
@@ -53,6 +56,9 @@ app.use(cors({
 }))
 app.use(morgan('dev'))
 app.use(express.json())
+
+// Servir archivos estáticos subidos (constancias PDF, etc.)
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
 
 app.get('/health', (_, res) => {
   const mongoConnected = mongoose.connection.readyState === 1

@@ -16,6 +16,7 @@ const modulos = [
       { to: '/ana/clientes-activos', label: 'Clientes Activos' },
       { to: '/ana/productos-activos', label: 'Productos Activos' },
       { to: '/ana/prospeccion', label: 'Prospección' },
+      { to: '/ana/cursos', label: 'Cursos' },
     ],
   },
   {
@@ -40,6 +41,7 @@ const prefetchConfig = {
   '/ana/clientes-activos': { queryKey: ['ana', 'clientes-activos'], queryFn: () => fetchApi('/ana/clientes-activos') },
   '/ana/productos-activos': { queryKey: ['ana', 'productos-activos'], queryFn: () => fetchApi('/productos-activos') },
   '/ana/prospeccion': { queryKey: ['ana', 'prospeccion'], queryFn: () => fetchApi('/ana/prospeccion') },
+  '/ana/cursos': { queryKey: ['ana', 'cursos'], queryFn: () => fetchApi('/ana/cursos') },
   '/promotores/clientes-nuevos': { queryKey: ['promotores-vistas', 'clientes-nuevos'], queryFn: () => fetchApi('/promotores-vistas/clientes-nuevos') },
   '/promotores/prospectos': { queryKey: ['promotores-vistas', 'prospectos'], queryFn: () => fetchApi('/promotores-vistas/prospectos') },
   '/promotores/productos': { queryKey: ['promotores-vistas', 'productos'], queryFn: () => fetchApi('/promotores-vistas/productos') },
