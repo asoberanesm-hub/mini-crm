@@ -160,6 +160,7 @@ router.get('/', async (req, res, next) => {
       const agendaEvents = agendaDocs.map((e) => ({
         id: e._id,
         dateTime: e.dateTime,
+        endTime: e.endTime || null,
         title: e.title,
         details: e.details || '',
         eventType: e.eventType || 'ANA',
@@ -191,6 +192,7 @@ router.get('/', async (req, res, next) => {
       const agendaEvents = agendaDocs.map((e) => ({
         id: e._id,
         dateTime: e.dateTime,
+        endTime: e.endTime || null,
         title: e.title,
         details: e.details || '',
         eventType: e.eventType || 'ANA',
@@ -246,9 +248,10 @@ router.get('/activity', async (req, res, next) => {
   }
 })
 
-const eventTypeEnum = z.enum(['MONEX', 'ANA', 'PROSP'])
+const eventTypeEnum = z.enum(['MONEX', 'ANA', 'PROSP', 'CITA'])
 const postSchema = z.object({
   dateTime: z.string().min(1),
+  endTime: z.string().optional(),
   title: z.string().min(1),
   details: z.string().optional().default(''),
   eventType: eventTypeEnum.optional().default('ANA'),
@@ -258,6 +261,10 @@ const postSchema = z.object({
   const d = new Date(data.dateTime)
   if (Number.isNaN(d.getTime())) throw new Error('dateTime inválido')
   const out = { dateTime: d, title: data.title.trim(), details: (data.details || '').trim(), eventType: data.eventType || 'ANA' }
+  if (data.endTime) {
+    const end = new Date(data.endTime)
+    if (!Number.isNaN(end.getTime())) out.endTime = end
+  }
   if (data.clienteId) out.clienteId = data.clienteId
   if (data.prospectoId) out.prospectoId = data.prospectoId
   return out
@@ -269,6 +276,7 @@ router.post('/', async (req, res, next) => {
     const data = postSchema.parse(req.body)
     const doc = await AgendaEvent.create({
       dateTime: data.dateTime,
+      endTime: data.endTime || undefined,
       title: data.title,
       details: data.details || '',
       eventType: data.eventType || 'ANA',
@@ -278,6 +286,7 @@ router.post('/', async (req, res, next) => {
     res.status(201).json({
       id: doc._id,
       dateTime: doc.dateTime,
+      endTime: doc.endTime || null,
       title: doc.title,
       details: doc.details || '',
       eventType: doc.eventType || 'ANA',
@@ -296,6 +305,7 @@ router.post('/', async (req, res, next) => {
 
 const putSchema = z.object({
   dateTime: z.string().optional(),
+  endTime: z.string().optional().nullable(),
   title: z.string().min(1).optional(),
   details: z.string().optional(),
   eventType: eventTypeEnum.optional(),
@@ -307,6 +317,9 @@ const putSchema = z.object({
     const d = new Date(data.dateTime)
     if (Number.isNaN(d.getTime())) throw new Error('dateTime inválido')
     out.dateTime = d
+  }
+  if (data.endTime !== undefined) {
+    out.endTime = data.endTime === null || data.endTime === '' ? null : (() => { const e = new Date(data.endTime); return Number.isNaN(e.getTime()) ? undefined : e })()
   }
   if (data.title !== undefined) out.title = data.title.trim()
   if (data.details !== undefined) out.details = data.details.trim()
@@ -336,6 +349,7 @@ router.put('/:id', async (req, res, next) => {
     res.json({
       id: doc._id,
       dateTime: doc.dateTime,
+      endTime: doc.endTime || null,
       title: doc.title,
       details: doc.details || '',
       eventType: doc.eventType || 'ANA',

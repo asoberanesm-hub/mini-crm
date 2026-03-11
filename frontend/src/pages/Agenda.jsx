@@ -34,6 +34,13 @@ function toInputTime(d) {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 
+/** Suma 30 minutos a una hora en formato "HH:mm" y devuelve "HH:mm". */
+function add30MinToTime(timeStr) {
+  const [h, m] = (timeStr || '00:00').split(':').map(Number)
+  const date = new Date(2000, 0, 1, h || 0, (m || 0) + 30, 0, 0)
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
 function formatDateShort(d) {
   return d ? format(new Date(d), 'd/M/yyyy', { locale: es }) : '-'
 }
@@ -50,6 +57,7 @@ const AGENDA_PALETTE = {
   monex: { main: '#003F69', soft: '#C6D4E1' },
   actualizaciones: { main: '#825E65', soft: '#EBC4A9' },
   ana: { main: '#6f0550', soft: '#d78fa3' },
+  cita: { main: '#0e7490', soft: '#c5ebf2' }, // paleta basada en #0fc3e8, fondo más claro
   realizado: { main: '#6B7280', soft: '#F3F4F6' },
 }
 
@@ -59,6 +67,7 @@ function getEventPalette(event) {
   if (event?.eventType === 'VMTO') return AGENDA_PALETTE.pfae
   if (event?.eventType === 'MONEX') return AGENDA_PALETTE.monex
   if (event?.eventType === 'CURSO') return { main: '#666163', soft: '#99cccc' }
+  if (event?.eventType === 'CITA') return AGENDA_PALETTE.cita
   return AGENDA_PALETTE.ana
 }
 
@@ -79,7 +88,16 @@ function eventTypeLabel(e) {
   if (e.eventType === 'VMTO') return 'VMTO'
   if (e.eventType === 'MONEX') return 'MONEX'
   if (e.eventType === 'CURSO') return 'CURSO'
+  if (e.eventType === 'CITA') return 'CITA'
   return 'ANA'
+}
+
+/** True si el evento se puede marcar como Hecho desde la API de agenda (es un AgendaEvent guardado). */
+function canMarkAsHecho(e) {
+  if (!e?.id || e.isProspectFollowUp || e.eventType === 'VMTO') return false
+  const id = String(e.id)
+  if (id.startsWith('prospect-') || id.startsWith('curso-')) return false
+  return /^[a-f0-9]{24}$/i.test(id)
 }
 
 /** Devuelve el enlace para editar el evento en su origen (Prospección, Productos Activos, Cliente o panel en Agenda). */
@@ -139,6 +157,8 @@ export default function Agenda() {
   const [nuevoEventType, setNuevoEventType] = useState('ANA')
   const [nuevaFecha, setNuevaFecha] = useState(toInputDate(now))
   const [nuevaHora, setNuevaHora] = useState('09:00')
+  const [nuevaHoraFin, setNuevaHoraFin] = useState('09:30')
+  useEffect(() => { setNuevaHoraFin(add30MinToTime(nuevaHora)) }, [nuevaHora])
   const [editingEvent, setEditingEvent] = useState(null)
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [showAddForm, setShowAddForm] = useState(false)
@@ -216,7 +236,7 @@ export default function Agenda() {
   const calendarEvents = useMemo(() => {
     return rawEvents.map((e) => {
       const start = new Date(e.dateTime)
-      const end = addHours(start, 1)
+      const end = e.endTime ? new Date(e.endTime) : addHours(start, 1)
       return {
         ...e,
         eventType: e.eventType || (e.isProspectFollowUp ? 'PROSP' : 'ANA'),
@@ -228,15 +248,17 @@ export default function Agenda() {
 
   const nowTime = useMemo(() => new Date(), [rawEvents])
 
+  /** Eventos vencidos (pasados): solo los no marcados como realizado, para que al marcar "Hecho" desaparezcan de la lista pero sigan en el calendario. */
   const vencidos = useMemo(() => {
     return rawEvents
-      .filter((e) => new Date(e.dateTime) < nowTime)
+      .filter((e) => new Date(e.dateTime) < nowTime && !e.realizado)
       .sort((a, b) => new Date(b.dateTime) - new Date(a.dateTime))
   }, [rawEvents, nowTime])
 
+  /** Próximos: solo los no marcados como realizado. */
   const proximosAll = useMemo(() => {
     return rawEvents
-      .filter((e) => new Date(e.dateTime) >= nowTime)
+      .filter((e) => new Date(e.dateTime) >= nowTime && !e.realizado)
       .sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime))
   }, [rawEvents, nowTime])
 
@@ -263,6 +285,7 @@ export default function Agenda() {
   const tableroProspeccion = useMemo(() => proximosAll.filter((e) => e.isProspectFollowUp || e.eventType === 'PROSP'), [proximosAll])
   const tableroMonex = useMemo(() => proximosAll.filter((e) => e.eventType === 'MONEX'), [proximosAll])
   const tableroANA = useMemo(() => proximosAll.filter((e) => !e.isProspectFollowUp && e.eventType === 'ANA'), [proximosAll])
+  const tableroCITA = useMemo(() => proximosAll.filter((e) => e.eventType === 'CITA'), [proximosAll])
 
   /** Resumen de carga por día de la semana visible (solo en vista semana). */
   const weekLoadSummary = useMemo(() => {
@@ -287,7 +310,8 @@ export default function Agenda() {
     e.preventDefault()
     if (!nuevoTitulo.trim()) return
     const dateTime = `${nuevaFecha}T${nuevaHora}:00`
-    crear.mutate({ dateTime, title: nuevoTitulo.trim(), details: nuevoDetalles.trim() || '', eventType: nuevoEventType })
+    const endTime = `${nuevaFecha}T${nuevaHoraFin}:00`
+    crear.mutate({ dateTime, endTime, title: nuevoTitulo.trim(), details: nuevoDetalles.trim() || '', eventType: nuevoEventType })
   }
 
   const handleGuardarEdit = (e) => {
@@ -491,6 +515,17 @@ export default function Agenda() {
                             </Link>
                           ) : (
                             <>
+                              {canMarkAsHecho(e) && (
+                                <button
+                                  type="button"
+                                  onClick={(ev) => { ev.stopPropagation(); actualizar.mutate({ id: e.id, payload: { realizado: true, nota: e.nota || '' } }); }}
+                                  disabled={actualizar.isPending}
+                                  className="px-2 py-1 text-xs font-medium text-emerald-700 hover:text-emerald-800 hover:underline"
+                                  title="Marcar como hecho (sigue en el calendario)"
+                                >
+                                  Hecho
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 onClick={(ev) => { ev.stopPropagation(); handleSelectEvent({ ...e, start: new Date(e.dateTime), end: addHours(new Date(e.dateTime), 1) }); }}
@@ -554,6 +589,17 @@ export default function Agenda() {
                             </Link>
                           ) : (
                             <>
+                              {canMarkAsHecho(e) && (
+                                <button
+                                  type="button"
+                                  onClick={(ev) => { ev.stopPropagation(); actualizar.mutate({ id: e.id, payload: { realizado: true, nota: e.nota || '' } }); }}
+                                  disabled={actualizar.isPending}
+                                  className="px-2 py-1 text-xs font-medium text-emerald-700 hover:text-emerald-800 hover:underline"
+                                  title="Marcar como hecho (sigue en el calendario)"
+                                >
+                                  Hecho
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => handleSelectEvent({ ...e, start: new Date(e.dateTime), end: addHours(new Date(e.dateTime), 1) })}
@@ -564,7 +610,7 @@ export default function Agenda() {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => { if (window.confirm(`¿Eliminar "${e.title}"?`)) eliminar.mutate(e.id); }}
+                                onClick={(ev) => { ev.stopPropagation(); if (window.confirm(`¿Eliminar "${e.title}"?`)) eliminar.mutate(e.id); }}
                                 disabled={eliminar.isPending && eliminar.variables === e.id}
                                 className="w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-red-600 hover:bg-red-100 disabled:opacity-50"
                                 title="Eliminar"
@@ -602,7 +648,7 @@ export default function Agenda() {
                 className="bg-slate-50 rounded-lg p-4 mb-4 border border-slate-200 space-y-4"
               >
                 <div className="w-full">
-                  <p className="text-sm font-semibold text-slate-700 mb-2">¿Evento MONEX o personal (ANA)?</p>
+                  <p className="text-sm font-semibold text-slate-700 mb-2">Tipo de evento</p>
                   <div className="flex flex-wrap gap-2">
                     <label className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border-2 cursor-pointer transition-colors ${nuevoEventType === 'MONEX' ? 'border-sky-600 bg-sky-50' : 'bg-white border-slate-300 hover:border-sky-300'}`}>
                       <input type="radio" name="nuevoEventType" value="MONEX" checked={nuevoEventType === 'MONEX'} onChange={(e) => setNuevoEventType(e.target.value)} className="text-sky-600" />
@@ -613,6 +659,11 @@ export default function Agenda() {
                       <input type="radio" name="nuevoEventType" value="ANA" checked={nuevoEventType === 'ANA'} onChange={(e) => setNuevoEventType(e.target.value)} className="text-sky-600" />
                       <span className="font-medium text-slate-800">ANA</span>
                       <span className="text-slate-500 text-sm">(evento personal)</span>
+                    </label>
+                    <label className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border-2 cursor-pointer transition-colors ${nuevoEventType === 'CITA' ? 'border-teal-600 bg-teal-50' : 'bg-white border-slate-300 hover:border-teal-300'}`}>
+                      <input type="radio" name="nuevoEventType" value="CITA" checked={nuevoEventType === 'CITA'} onChange={(e) => setNuevoEventType(e.target.value)} className="text-teal-600" />
+                      <span className="font-medium text-slate-800">CITA</span>
+                      <span className="text-slate-500 text-sm">(cita)</span>
                     </label>
                   </div>
                 </div>
@@ -628,6 +679,14 @@ export default function Agenda() {
                   value={nuevaHora}
                   onChange={(e) => setNuevaHora(e.target.value)}
                   className="px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                  title="Hora inicio"
+                />
+                <input
+                  type="time"
+                  value={nuevaHoraFin}
+                  onChange={(e) => setNuevaHoraFin(e.target.value)}
+                  className="px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                  title="Hora fin"
                 />
                 <input
                   type="text"
@@ -765,6 +824,7 @@ export default function Agenda() {
                     <option value="MONEX">MONEX</option>
                     <option value="ANA">ANA</option>
                     <option value="PROSP">PROSP</option>
+                    <option value="CITA">CITA</option>
                   </select>
                 </div>
                 <input
@@ -913,6 +973,10 @@ export default function Agenda() {
                 <span className="w-3 h-3 rounded shrink-0" style={{ backgroundColor: AGENDA_PALETTE.ana.main }} />
                 ANA
               </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded shrink-0" style={{ backgroundColor: AGENDA_PALETTE.cita.main }} />
+                CITA
+              </span>
             </div>
 
             <div className="rounded-lg border border-slate-200">
@@ -974,6 +1038,10 @@ export default function Agenda() {
               <span className="inline-flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded shrink-0" style={{ backgroundColor: AGENDA_PALETTE.ana.main }} />
                 ANA
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded shrink-0" style={{ backgroundColor: AGENDA_PALETTE.cita.main }} />
+                CITA
               </span>
             </div>
           </div>
@@ -1196,6 +1264,39 @@ export default function Agenda() {
                         <Link to={editTarget.to} state={editTarget.state} className="text-xs font-medium hover:underline" style={{ color: '#3B82F6' }}>{editTarget.label}</Link>
                       ) : (
                         <button type="button" onClick={() => handleSelectEvent({ ...e, start: new Date(e.dateTime), end: addHours(new Date(e.dateTime), 1) })} className="text-xs font-medium hover:underline bg-transparent border-0 cursor-pointer p-0" style={{ color: '#3B82F6' }}>Editar</button>
+                      )}
+                    </span>
+                  </div>
+                )
+              })
+            )}
+          </div>
+        </div>
+
+        {/* 7. CITA */}
+        <div className="rounded-xl border p-4 bg-white" style={{ borderColor: '#E5E7EB', borderLeftWidth: 4, borderLeftColor: AGENDA_PALETTE.cita.main }}>
+          <h3 className="text-sm font-semibold mb-3" style={{ color: '#111827' }}>CITA</h3>
+          <div className="space-y-2 max-h-[220px] overflow-y-auto">
+            {tableroCITA.length === 0 ? (
+              <p className="text-sm" style={{ color: '#6B7280' }}>No hay citas</p>
+            ) : (
+              tableroCITA.map((e) => {
+                const editTarget = getEventEditTarget(e)
+                return (
+                  <div
+                    key={e.id}
+                    className="flex items-center gap-2 py-2 px-2 rounded-lg hover:bg-[#F3F4F6] cursor-pointer transition-colors"
+                    onClick={() => handleSelectEvent({ ...e, start: new Date(e.dateTime), end: (e.endTime ? new Date(e.endTime) : addHours(new Date(e.dateTime), 1)) })}
+                  >
+                    <span className="text-xs font-medium shrink-0 w-10" style={{ color: '#6B7280' }}>{formatTime(e.dateTime)}</span>
+                    <span className="text-xs shrink-0 w-16" style={{ color: '#6B7280' }}>{formatDateShort(e.dateTime)}</span>
+                    <span className="font-medium truncate min-w-0 flex-1" style={{ color: '#111827' }} title={e.title}>{e.title}</span>
+                    <span className="text-xs font-medium shrink-0" style={getSectionBadgeStyle('cita')}>CITA</span>
+                    <span className="shrink-0" onClick={(ev) => ev.stopPropagation()}>
+                      {editTarget.type === 'link' ? (
+                        <Link to={editTarget.to} state={editTarget.state} className="text-xs font-medium hover:underline" style={{ color: '#3B82F6' }}>{editTarget.label}</Link>
+                      ) : (
+                        <button type="button" onClick={() => handleSelectEvent({ ...e, start: new Date(e.dateTime), end: (e.endTime ? new Date(e.endTime) : addHours(new Date(e.dateTime), 1)) })} className="text-xs font-medium hover:underline bg-transparent border-0 cursor-pointer p-0" style={{ color: '#3B82F6' }}>Editar</button>
                       )}
                     </span>
                   </div>
