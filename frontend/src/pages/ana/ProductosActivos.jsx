@@ -201,8 +201,10 @@ export default function ProductosActivos() {
     const s = String(v).toLowerCase()
     // 1. ACTIVO (badge)
     if (s === 'activo' || s === 'sí' || s === 'si') return { className: colorClass, text: 'ACTIVO' }
-    // 2. TRAMITE (badge)
-    if (s === 'tramite' || s === 'trámite' || s === 'pendiente') return { className: colorClass, text: 'TRAMITE' }
+    // 2. TRAMITE (badge) — siempre en grises, sin importar el producto
+    if (s === 'tramite' || s === 'trámite' || s === 'pendiente') {
+      return { className: 'bg-slate-100 text-slate-700', text: 'TRAMITE' }
+    }
     // 3. Fecha formateada (badge)
     if (isDateValue(val)) return { className: colorClass, text: toShortDate(val) }
 

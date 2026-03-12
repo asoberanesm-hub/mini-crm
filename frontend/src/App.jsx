@@ -13,6 +13,7 @@ import ProductosPromotores from './pages/promotores/Productos'
 import Agenda from './pages/Agenda'
 import Clientes from './pages/Clientes'
 import ClienteDetalle from './pages/ClienteDetalle'
+import Pagar from './pages/Pagar'
 
 export default function App() {
   return (
@@ -39,6 +40,7 @@ export default function App() {
         <Route path="agenda" element={<Agenda />} />
         <Route path="clientes" element={<Clientes />} />
         <Route path="clientes/:id" element={<ClienteDetalle />} />
+        <Route path="pagar" element={<Pagar />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

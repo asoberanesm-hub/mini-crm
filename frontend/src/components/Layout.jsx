@@ -33,6 +33,7 @@ const modulos = [
       { to: '/agenda', label: 'Calendario' },
     ],
   },
+  { to: '/pagar', label: 'Pagar' },
 ]
 
 // Prefetch: al pasar el ratón por un enlace, cargamos los datos de ese módulo para que al hacer clic ya estén (o casi).
