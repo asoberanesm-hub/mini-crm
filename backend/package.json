@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "node src/index.js",
     "start": "node src/index.js",
-    "build": "node src/index.js",
+    "build": "echo 'No build step'",
     "seed": "node src/scripts/seed.js",
     "import:vertical": "node src/scripts/importVerticalAysa.js",
     "email:test": "node src/scripts/send-test-email.js"
@@ -31,6 +31,7 @@
     "multer": "^2.1.1",
     "openai": "^4.104.0",
     "resend": "^6.9.3",
+    "stripe": "^14.25.0",
     "xlsx": "^0.18.5",
     "zod": "^3.23.8"
   }

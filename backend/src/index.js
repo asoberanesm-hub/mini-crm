@@ -22,6 +22,7 @@ import chatRouter from './routes/chat.js'
 import agendaRouter from './routes/agenda.js'
 import emailRouter from './routes/email.js'
 import productosActivosRouter from './routes/productosActivos.js'
+import stripeRouter from './routes/stripe.js'
 
 const app = express()
 const PORT = process.env.PORT ?? 3001
@@ -60,6 +61,8 @@ app.use(express.json())
 // Servir archivos estáticos subidos (constancias PDF, etc.)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
 
+app.get('/', (_, res) => res.status(200).json({ ok: true, service: 'mini-crm-api' }))
+
 app.get('/health', (_, res) => {
   const mongoConnected = mongoose.connection.readyState === 1
   res.json({
@@ -83,6 +86,7 @@ app.use('/api/v1/chat', chatRouter)
 app.use('/api/v1/agenda', agendaRouter)
 app.use('/api/v1/email', emailRouter)
 app.use('/api/v1/productos-activos', productosActivosRouter)
+app.use('/api/v1/stripe', stripeRouter)
 
 app.use(errorHandler)
 
@@ -91,8 +95,8 @@ const MONGODB_URI = (process.env.MONGODB_URI || '').trim() || 'mongodb://localho
 mongoose.connection.on('disconnected', () => console.warn('MongoDB desconectado. Reconectando...'))
 mongoose.connection.on('reconnected', () => console.log('MongoDB reconectado'))
 
-app.listen(PORT, () => {
-  console.log(`Server en http://localhost:${PORT}`)
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server en http://0.0.0.0:${PORT}`)
   mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 15000, retryWrites: true })
     .then(() => console.log('MongoDB conectado'))
     .catch((err) => {
