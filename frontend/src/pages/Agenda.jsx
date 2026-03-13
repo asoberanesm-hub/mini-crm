@@ -425,10 +425,13 @@ export default function Agenda() {
   const EventComponent = ({ event }) => {
     const label = eventTypeLabel(event)
     const title = event.title || ''
+    const timeStr = event.start ? format(new Date(event.start), 'HH:mm', { locale: es }) : ''
     return (
-      <span className="block truncate" title={title}>
-        <span className="opacity-90 font-semibold text-[10px] uppercase tracking-wide mr-1">[{label}]</span>
-        {title}
+      <span className="block truncate leading-tight" title={title}>
+        <span className="block text-[11px] font-semibold opacity-95 whitespace-nowrap">
+          {timeStr}{timeStr && label ? ' · ' : ''}{label}
+        </span>
+        <span className="block text-[11px] mt-0.5 truncate font-medium">{title}</span>
       </span>
     )
   }
@@ -975,7 +978,7 @@ export default function Agenda() {
                 scrollToTime={scrollToSeven}
                 min={calMin}
                 max={calMax}
-                style={{ height: 440 }}
+                style={{ height: 580 }}
                 messages={{
                   today: 'Hoy',
                   previous: 'Ant',

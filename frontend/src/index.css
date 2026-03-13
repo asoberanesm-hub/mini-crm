@@ -9,6 +9,9 @@
 .rbc-day-bg + .rbc-day-bg { border-left: 1px solid #e2e8f0; }
 .rbc-event { padding: 4px 8px; font-size: 0.75rem; border-radius: 4px; border-left-width: 4px; border-left-style: solid; }
 .rbc-event:hover { filter: brightness(0.97); }
+/* Ocultar hora inicio–fin por defecto; mostramos "HH:mm · TIPO" + título en el componente de evento */
+.rbc-event-label { display: none; }
+.rbc-event-content { margin: 0; }
 .rbc-today { background-color: #F3F4F6; }
 .rbc-off-range-bg { background: #f8fafc; }
 .rbc-toolbar { margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
