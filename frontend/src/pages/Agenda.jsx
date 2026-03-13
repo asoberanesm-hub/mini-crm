@@ -153,6 +153,8 @@ export default function Agenda() {
   const navigate = useNavigate()
   const now = useMemo(() => new Date(), [])
   const scrollToSeven = useMemo(() => new Date(1970, 0, 1, 7, 0, 0, 0), [])
+  const calMin = useMemo(() => new Date(1970, 0, 1, 7, 0, 0, 0), [])
+  const calMax = useMemo(() => new Date(1970, 0, 1, 19, 0, 0, 0), [])
   const [rangeFrom] = useState(() => format(subMonths(now, 2), 'yyyy-MM-dd'))
   const [rangeTo] = useState(() => format(addMonths(now, 5), 'yyyy-MM-dd'))
 
@@ -433,9 +435,6 @@ export default function Agenda() {
 
   if (isLoading) return <LoadingModule refetch={refetch} />
   if (error) return <ErrorApi error={error} />
-
-  const calMin = useMemo(() => new Date(1970, 0, 1, 7, 0, 0, 0), [])
-  const calMax = useMemo(() => new Date(1970, 0, 1, 19, 0, 0, 0), [])
 
   return (
     <div className="p-4 lg:p-6 min-h-screen bg-slate-50">
