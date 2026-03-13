@@ -20,10 +20,14 @@ const localizer = dateFnsLocalizer({
   locales,
 })
 
+/** Fecha en formato YYYY-MM-DD en hora local (evita desfase por UTC en inputs). */
 function toInputDate(d) {
   if (!d) return ''
   const date = new Date(d)
-  return date.toISOString().slice(0, 10)
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 function toInputTime(d) {
@@ -187,12 +191,6 @@ export default function Agenda() {
     navigate(location.pathname, { replace: true, state: {} })
   }, [rawEvents, location.state?.selectEventId, location.pathname, navigate])
 
-  const { data: kpis = {} } = useQuery({
-    queryKey: ['agenda', 'kpis', TODAY],
-    queryFn: () => fetchApi(`/agenda/kpis?date=${TODAY}`),
-    placeholderData: keepPreviousData,
-  })
-
   const { data: activityList = [] } = useQuery({
     queryKey: ['agenda', 'activity'],
     queryFn: () => fetchApi('/agenda/activity?limit=20'),
@@ -309,16 +307,25 @@ export default function Agenda() {
   const handleCrear = (e) => {
     e.preventDefault()
     if (!nuevoTitulo.trim()) return
-    const dateTime = `${nuevaFecha}T${nuevaHora}:00`
-    const endTime = `${nuevaFecha}T${nuevaHoraFin}:00`
+    const localStr = `${nuevaFecha}T${nuevaHora}:00`
+    const localStrEnd = `${nuevaFecha}T${nuevaHoraFin}:00`
+    const dateTime = new Date(localStr).toISOString()
+    const endTime = new Date(localStrEnd).toISOString()
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Agenda] Crear evento:', { localStr, dateTime, localStrEnd, endTime })
+    }
     crear.mutate({ dateTime, endTime, title: nuevoTitulo.trim(), details: nuevoDetalles.trim() || '', eventType: nuevoEventType })
   }
 
   const handleGuardarEdit = (e) => {
     e.preventDefault()
     if (!editingEvent || !editingEvent.title?.trim()) return
-    const d = typeof editingEvent.dateTime === 'string' ? editingEvent.dateTime : (toInputDate(editingEvent.dateTime) + 'T' + toInputTime(editingEvent.dateTime))
-    const dateTime = d.length === 16 ? d + ':00' : d
+    const d = new Date(editingEvent.dateTime)
+    const localStr = toInputDate(d) + 'T' + toInputTime(d) + ':00'
+    const dateTime = new Date(localStr).toISOString()
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Agenda] Actualizar evento:', { localStr, dateTime })
+    }
     actualizar.mutate({
       id: editingEvent.id,
       payload: {
@@ -427,46 +434,17 @@ export default function Agenda() {
   if (isLoading) return <LoadingModule refetch={refetch} />
   if (error) return <ErrorApi error={error} />
 
+  const calMin = useMemo(() => new Date(1970, 0, 1, 7, 0, 0, 0), [])
+  const calMax = useMemo(() => new Date(1970, 0, 1, 19, 0, 0, 0), [])
+
   return (
     <div className="p-4 lg:p-6 min-h-screen bg-slate-50">
       <div className="mb-4">
         <h1 className="text-2xl font-semibold text-slate-800">Agenda</h1>
-        <p className="text-slate-600 text-sm mt-1">Dashboard ejecutivo · Calendario, recordatorios y seguimientos.</p>
+        <p className="text-slate-600 text-sm mt-1">Calendario y recordatorios.</p>
       </div>
 
-      {/* 1. KPIs DEL DÍA */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center text-violet-600 font-bold text-lg">{kpis.seguimientosHoy ?? 0}</div>
-          <div>
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Seguimientos hoy</p>
-            <p className="text-xl font-semibold text-slate-800">{kpis.seguimientosHoy ?? 0}</p>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-sky-100 flex items-center justify-center text-sky-600 font-bold text-lg">{kpis.prospectosActivos ?? 0}</div>
-          <div>
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Prospectos activos</p>
-            <p className="text-xl font-semibold text-slate-800">{kpis.prospectosActivos ?? 0}</p>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-lg">{kpis.vencimientosHoy ?? 0}</div>
-          <div>
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Vencimientos hoy</p>
-            <p className="text-xl font-semibold text-slate-800">{kpis.vencimientosHoy ?? 0}</p>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center text-teal-600 font-bold text-lg">{kpis.eventosHoy ?? 0}</div>
-          <div>
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Eventos hoy</p>
-            <p className="text-xl font-semibold text-slate-800">{kpis.eventosHoy ?? 0}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. RECORDATORIOS | CALENDARIO */}
+      {/* RECORDATORIOS | CALENDARIO */}
       <div className="grid grid-cols-1 xl:grid-cols-[320px_1fr] gap-6 mb-6">
         {/* Panel Recordatorios (izquierda) */}
         <aside className="order-2 xl:order-1 space-y-4">
@@ -979,7 +957,7 @@ export default function Agenda() {
               </span>
             </div>
 
-            <div className="rounded-lg border border-slate-200">
+            <div className="rounded-lg border border-slate-200 bg-white">
               <Calendar
                 localizer={localizer}
                 events={calendarEvents}
@@ -996,7 +974,9 @@ export default function Agenda() {
                 date={currentCalendarDate}
                 onNavigate={setCurrentCalendarDate}
                 scrollToTime={scrollToSeven}
-                style={{ height: 520 }}
+                min={calMin}
+                max={calMax}
+                style={{ height: 440 }}
                 messages={{
                   today: 'Hoy',
                   previous: 'Ant',

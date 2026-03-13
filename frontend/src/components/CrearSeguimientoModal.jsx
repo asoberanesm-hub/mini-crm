@@ -5,7 +5,10 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 function toInputDate(d) {
   if (!d) return ''
   const date = new Date(d)
-  return date.toISOString().slice(0, 10)
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 function nextWeekday() {
@@ -57,7 +60,11 @@ export default function CrearSeguimientoModal({ open, onClose, tipo, entity }) {
     if (!fecha.trim()) return
 
     if (tipo === 'cliente') {
-      const dateTime = `${fecha}T${hora}:00`
+      const localStr = `${fecha}T${hora}:00`
+      const dateTime = new Date(localStr).toISOString()
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[CrearSeguimiento] Cliente evento:', { localStr, dateTime })
+      }
       crearEventoCliente.mutate({
         dateTime,
         title: entity.name.trim(),

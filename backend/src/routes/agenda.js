@@ -6,6 +6,7 @@ import Prospecto from '../models/Prospecto.js'
 import ProductoActivo from '../models/ProductoActivo.js'
 import CursoAna from '../models/CursoAna.js'
 import { isConnected } from '../lib/db.js'
+import { startOfDayLocalUTC, endOfDayLocalUTC, dateTo9LocalUTC } from '../lib/tz.js'
 
 const router = Router()
 
@@ -21,12 +22,11 @@ const PRODUCTO_LABELS = {
   corporativoFiduciario: 'Corporativo',
 }
 
-/** Eventos del día a las 10:00 por cada prospecto con fechaSeguimiento ese día (Prospección). */
-function buildProspectFollowUpEvents(y, m, d) {
-  const dateTime = new Date(y, m - 1, d, 10, 0, 0, 0)
+/** Eventos de seguimiento: usamos la fecha/hora ya guardada en prospecto (10:00 México = 16:00 UTC). */
+function buildProspectFollowUpEvents(_y, _m, _d) {
   return (prospect) => ({
     id: `prospect-${prospect._id}`,
-    dateTime,
+    dateTime: prospect.fechaSeguimiento,
     title: prospect.name || 'Prospecto',
     details: 'Seguimiento (Prospección) — comunicarse con la empresa',
     eventType: 'PROSP',
@@ -50,7 +50,7 @@ function formatVmtoDate(date) {
   return `${d}/${m}/${y}`
 }
 
-/** Eventos VMTO: por cada ProductoActivo, cada fecha de vencimiento en el rango. Incluye nombre, producto y fecha. */
+/** Eventos VMTO: por cada ProductoActivo, cada fecha de vencimiento en el rango. 9:00 hora local = 15:00 UTC. */
 function buildVmtoEvents(productos, start, end) {
   const events = []
   for (const doc of productos) {
@@ -60,7 +60,7 @@ function buildVmtoEvents(productos, start, end) {
       if (!isDateValue(d)) continue
       const date = new Date(d)
       if (Number.isNaN(date.getTime()) || date < start || date > end) continue
-      const dateTime = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 9, 0, 0, 0)
+      const dateTime = dateTo9LocalUTC(date)
       const fechaStr = formatVmtoDate(date)
       events.push({
         id: `vmto-${doc._id}-${key}`,
@@ -77,14 +77,14 @@ function buildVmtoEvents(productos, start, end) {
   return events
 }
 
-/** Eventos de cursos ANA: por cada CursoAna con fechaLimite en rango. */
+/** Eventos de cursos ANA: por cada CursoAna con fechaLimite en rango. 9:00 hora local = 15:00 UTC. */
 function buildCursoEvents(cursos, start, end) {
   const events = []
   for (const c of cursos) {
     if (!c.fechaLimite) continue
     const date = new Date(c.fechaLimite)
     if (Number.isNaN(date.getTime()) || date < start || date > end) continue
-    const dateTime = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 9, 0, 0, 0)
+    const dateTime = dateTo9LocalUTC(date)
     events.push({
       id: `curso-${c._id}`,
       dateTime,
@@ -110,8 +110,8 @@ router.get('/kpis', async (req, res, next) => {
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
     const dateStr = req.query.date && dateRegex.test(String(req.query.date)) ? String(req.query.date) : todayStr
     const [y, m, d] = dateStr.split('-').map(Number)
-    const start = new Date(y, m - 1, d, 0, 0, 0, 0)
-    const end = new Date(y, m - 1, d, 23, 59, 59, 999)
+    const start = startOfDayLocalUTC(y, m, d)
+    const end = endOfDayLocalUTC(y, m, d)
 
     const [seguimientosHoy, prospectosActivos, productos, agendaDocs] = await Promise.all([
       Prospecto.countDocuments({ promotorId: null, fechaSeguimiento: { $gte: start, $lte: end } }),
@@ -149,8 +149,8 @@ router.get('/', async (req, res, next) => {
 
     if (date && dateRegex.test(String(date))) {
       const [y, m, d] = String(date).split('-').map(Number)
-      const start = new Date(y, m - 1, d, 0, 0, 0, 0)
-      const end = new Date(y, m - 1, d, 23, 59, 59, 999)
+      const start = startOfDayLocalUTC(y, m, d)
+      const end = endOfDayLocalUTC(y, m, d)
       const [agendaDocs, prospectos, productos, cursos] = await Promise.all([
         AgendaEvent.find({ dateTime: { $gte: start, $lte: end } }).sort({ dateTime: 1 }).lean(),
         Prospecto.find({ promotorId: null, fechaSeguimiento: { $gte: start, $lte: end } }).lean(),
@@ -181,8 +181,8 @@ router.get('/', async (req, res, next) => {
     if (from && to && dateRegex.test(String(from)) && dateRegex.test(String(to))) {
       const [y1, m1, d1] = String(from).split('-').map(Number)
       const [y2, m2, d2] = String(to).split('-').map(Number)
-      const start = new Date(y1, m1 - 1, d1, 0, 0, 0, 0)
-      const end = new Date(y2, m2 - 1, d2, 23, 59, 59, 999)
+      const start = startOfDayLocalUTC(y1, m1, d1)
+      const end = endOfDayLocalUTC(y2, m2, d2)
       const [agendaDocs, prospectos, productos, cursos] = await Promise.all([
         AgendaEvent.find({ dateTime: { $gte: start, $lte: end } }).sort({ dateTime: 1 }).lean(),
         Prospecto.find({ promotorId: null, fechaSeguimiento: { $gte: start, $lte: end } }).lean(),
@@ -201,18 +201,14 @@ router.get('/', async (req, res, next) => {
         clienteId: e.clienteId || null,
         prospectoId: e.prospectoId || null,
       }))
-      const followUpEvents = prospectos.map((p) => {
-        const d = new Date(p.fechaSeguimiento)
-        const dateTime = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 10, 0, 0, 0)
-        return {
-          id: `prospect-${p._id}`,
-          dateTime,
-          title: p.name || 'Prospecto',
-          details: 'Seguimiento (Prospección)',
-          eventType: 'PROSP',
-          isProspectFollowUp: true,
-        }
-      })
+      const followUpEvents = prospectos.map((p) => ({
+        id: `prospect-${p._id}`,
+        dateTime: p.fechaSeguimiento,
+        title: p.name || 'Prospecto',
+        details: 'Seguimiento (Prospección)',
+        eventType: 'PROSP',
+        isProspectFollowUp: true,
+      }))
       const vmtoEvents = buildVmtoEvents(productos, start, end)
       const cursoEvents = buildCursoEvents(cursos, start, end)
       const all = [...agendaEvents, ...followUpEvents, ...vmtoEvents, ...cursoEvents].sort(
@@ -260,6 +256,9 @@ const postSchema = z.object({
 }).transform((data) => {
   const d = new Date(data.dateTime)
   if (Number.isNaN(d.getTime())) throw new Error('dateTime inválido')
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[agenda POST] dateTime recibido:', data.dateTime, '→ guardado como:', d.toISOString())
+  }
   const out = { dateTime: d, title: data.title.trim(), details: (data.details || '').trim(), eventType: data.eventType || 'ANA' }
   if (data.endTime) {
     const end = new Date(data.endTime)
@@ -316,6 +315,9 @@ const putSchema = z.object({
   if (data.dateTime !== undefined) {
     const d = new Date(data.dateTime)
     if (Number.isNaN(d.getTime())) throw new Error('dateTime inválido')
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[agenda PUT] dateTime recibido:', data.dateTime, '→ guardado como:', d.toISOString())
+    }
     out.dateTime = d
   }
   if (data.endTime !== undefined) {

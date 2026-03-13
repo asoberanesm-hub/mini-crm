@@ -6,12 +6,13 @@ import { z } from 'zod'
 const router = Router()
 const stages = ['lead', 'perfilado', 'propuesta', 'negociación', 'autorizado', 'activado', 'perdido']
 
-// Parsea "YYYY-MM-DD" como mediodía UTC para que no cambie de día en zonas como México
+// Parsea "YYYY-MM-DD" como ese día a las 10:00 hora México (Chihuahua UTC-6) = 16:00 UTC,
+// para que el calendario muestre el seguimiento a las 10:00 en hora local.
 function parseDateOnly(s) {
   if (!s || typeof s !== 'string') return undefined
   const trimmed = s.trim()
   if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return undefined
-  return new Date(trimmed + 'T12:00:00.000Z')
+  return new Date(trimmed + 'T16:00:00.000Z')
 }
 
 const bodySchema = z.object({
